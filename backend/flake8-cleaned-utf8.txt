@@ -1,0 +1,118 @@
+﻿main.py:37:49: E261 at least two spaces before inline comment
+main.py:49:80: E501 line too long (80 > 79 characters)
+main.py:62:1: E302 expected 2 blank lines, found 1
+main.py:66:1: E302 expected 2 blank lines, found 1
+main.py:70:1: E302 expected 2 blank lines, found 1
+main.py:79:1: E302 expected 2 blank lines, found 1
+main.py:89:1: E302 expected 2 blank lines, found 1
+main.py:92:1: W293 blank line contains whitespace
+main.py:100:1: W293 blank line contains whitespace
+main.py:110:1: W293 blank line contains whitespace
+main.py:113:25: W291 trailing whitespace
+main.py:117:1: E302 expected 2 blank lines, found 1
+main.py:119:80: E501 line too long (100 > 79 characters)
+main.py:123:1: E302 expected 2 blank lines, found 1
+main.py:132:1: E302 expected 2 blank lines, found 1
+main.py:135:80: E501 line too long (88 > 79 characters)
+main.py:136:80: E501 line too long (93 > 79 characters)
+main.py:141:1: E302 expected 2 blank lines, found 1
+main.py:144:80: E501 line too long (103 > 79 characters)
+main.py:145:80: E501 line too long (86 > 79 characters)
+main.py:150:1: E302 expected 2 blank lines, found 1
+main.py:153:80: E501 line too long (91 > 79 characters)
+main.py:159:1: E302 expected 2 blank lines, found 1
+main.py:162:80: E501 line too long (92 > 79 characters)
+main.py:168:1: E302 expected 2 blank lines, found 1
+main.py:171:80: E501 line too long (91 > 79 characters)
+main.py:172:80: E501 line too long (82 > 79 characters)
+main.py:177:1: E302 expected 2 blank lines, found 1
+main.py:180:80: E501 line too long (95 > 79 characters)
+main.py:181:80: E501 line too long (94 > 79 characters)
+main.py:186:1: E302 expected 2 blank lines, found 1
+main.py:189:80: E501 line too long (91 > 79 characters)
+main.py:190:80: E501 line too long (98 > 79 characters)
+main.py:195:1: E302 expected 2 blank lines, found 1
+main.py:198:80: E501 line too long (95 > 79 characters)
+main.py:199:80: E501 line too long (113 > 79 characters)
+main.py:204:1: E302 expected 2 blank lines, found 1
+main.py:207:80: E501 line too long (82 > 79 characters)
+main.py:208:80: E501 line too long (88 > 79 characters)
+main.py:214:1: E302 expected 2 blank lines, found 1
+main.py:217:80: E501 line too long (113 > 79 characters)
+main.py:218:80: E501 line too long (117 > 79 characters)
+main.py:223:1: E302 expected 2 blank lines, found 1
+main.py:227:29: W291 trailing whitespace
+main.py:228:80: E501 line too long (108 > 79 characters)
+main.py:233:1: W293 blank line contains whitespace
+main.py:242:1: W293 blank line contains whitespace
+main.py:244:80: E501 line too long (87 > 79 characters)
+main.py:245:1: W293 blank line contains whitespace
+main.py:248:80: E501 line too long (82 > 79 characters)
+main.py:258:80: E501 line too long (130 > 79 characters)
+main.py:261:80: E501 line too long (120 > 79 characters)
+main.py:269:1: E302 expected 2 blank lines, found 1
+main.py:272:1: W293 blank line contains whitespace
+main.py:275:80: E501 line too long (263 > 79 characters)
+main.py:284:1: W293 blank line contains whitespace
+main.py:286:1: W293 blank line contains whitespace
+main.py:287:80: E501 line too long (81 > 79 characters)
+main.py:289:1: W293 blank line contains whitespace
+main.py:302:80: E501 line too long (83 > 79 characters)
+main.py:316:80: E501 line too long (113 > 79 characters)
+main.py:322:80: E501 line too long (122 > 79 characters)
+main.py:332:1: W293 blank line contains whitespace
+main.py:337:37: E261 at least two spaces before inline comment
+main.py:338:80: E501 line too long (131 > 79 characters)
+main.py:338:114: E261 at least two spaces before inline comment
+main.py:340:1: W293 blank line contains whitespace
+main.py:344:80: E501 line too long (110 > 79 characters)
+main.py:351:80: E501 line too long (114 > 79 characters)
+main.py:357:1: W293 blank line contains whitespace
+main.py:359:80: E501 line too long (81 > 79 characters)
+main.py:360:1: W293 blank line contains whitespace
+main.py:362:1: W293 blank line contains whitespace
+main.py:366:1: W293 blank line contains whitespace
+main.py:372:1: W293 blank line contains whitespace
+main.py:379:80: E501 line too long (97 > 79 characters)
+main.py:380:80: E501 line too long (87 > 79 characters)
+main.py:381:1: W293 blank line contains whitespace
+main.py:384:1: W293 blank line contains whitespace
+main.py:386:80: E501 line too long (88 > 79 characters)
+main.py:387:36: E261 at least two spaces before inline comment
+main.py:390:80: E501 line too long (97 > 79 characters)
+main.py:396:1: W293 blank line contains whitespace
+main.py:402:80: E501 line too long (148 > 79 characters)
+main.py:406:80: E501 line too long (133 > 79 characters)
+main.py:413:1: W293 blank line contains whitespace
+main.py:417:53: E261 at least two spaces before inline comment
+main.py:422:1: W293 blank line contains whitespace
+main.py:424:80: E501 line too long (86 > 79 characters)
+main.py:433:80: E501 line too long (100 > 79 characters)
+main.py:438:1: W293 blank line contains whitespace
+main.py:442:26: E261 at least two spaces before inline comment
+main.py:444:1: W293 blank line contains whitespace
+main.py:446:25: W291 trailing whitespace
+main.py:447:80: E501 line too long (88 > 79 characters)
+main.py:450:1: E302 expected 2 blank lines, found 1
+main.py:457:1: W293 blank line contains whitespace
+main.py:459:1: W293 blank line contains whitespace
+main.py:463:1: W293 blank line contains whitespace
+main.py:465:80: E501 line too long (83 > 79 characters)
+main.py:468:80: E501 line too long (92 > 79 characters)
+main.py:469:80: E501 line too long (81 > 79 characters)
+main.py:474:80: E501 line too long (89 > 79 characters)
+main.py:476:1: E302 expected 2 blank lines, found 1
+main.py:481:80: E501 line too long (83 > 79 characters)
+main.py:482:1: W293 blank line contains whitespace
+main.py:484:1: W293 blank line contains whitespace
+main.py:487:1: W293 blank line contains whitespace
+main.py:489:1: W293 blank line contains whitespace
+main.py:492:1: W293 blank line contains whitespace
+main.py:494:1: W293 blank line contains whitespace
+main.py:496:1: W293 blank line contains whitespace
+main.py:498:80: E501 line too long (91 > 79 characters)
+main.py:500:1: E302 expected 2 blank lines, found 1
+main.py:502:80: E501 line too long (93 > 79 characters)
+main.py:504:80: E501 line too long (92 > 79 characters)
+main.py:506:80: E501 line too long (91 > 79 characters)
+main.py:511:1: W293 blank line contains whitespace

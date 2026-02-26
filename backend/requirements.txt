@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pydantic
+requests
+google-generativeai
+apify-client
+groq
+beautifulsoup4
+gtts
+python-dotenv
