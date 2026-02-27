@@ -22,25 +22,21 @@ from typing import Any, List
 # Load environment variables
 load_dotenv()
 
-# Database Initialization
-DB_PATH = "gistly_core.db"
+from supabase import create_client, Client
 
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS workflows (
-            id TEXT PRIMARY KEY,
-            user_id TEXT,
-            name TEXT,
-            data TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    conn.commit()
-    conn.close()
+# Database Initialization (SQLite removed, using Supabase)
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
-init_db()
+supabase: Client | None = None
+if SUPABASE_URL and SUPABASE_KEY:
+    try:
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        print("Successfully connected to Supabase")
+    except Exception as e:
+        print(f"Failed to initialize Supabase client: {e}")
+else:
+    print("WARNING: Supabase credentials not found. Database features will be disabled.")
 
 # Configure the Gemini API
 API_KEY = os.getenv("GEMINI_API_KEY")
@@ -595,62 +591,60 @@ class WorkflowSaveRequest(BaseModel):
 
 @app.post("/api/workflows/save")
 async def save_workflow(req: WorkflowSaveRequest):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database connection not available")
+        
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        # Check if exists
-        cursor.execute("SELECT id FROM workflows WHERE id = ?", (req.id,))
-        exists = cursor.fetchone()
-        
         data_json = json.dumps(req.nodes)
         
-        if exists:
-            cursor.execute(
-                "UPDATE workflows SET data = ?, name = ? WHERE id = ?",
-                (data_json, req.name, req.id)
-            )
-        else:
-            cursor.execute(
-                "INSERT INTO workflows (id, user_id, name, data) VALUES (?, ?, ?, ?)",
-                (req.id, req.user_id, req.name, data_json)
-            )
-            
-        conn.commit()
-        conn.close()
-        return {"status": "success", "message": "Workflow saved successfully."}
+        # In Supabase, upsert handles both INSERT and UPDATE based on primary key
+        response = supabase.table("workflows").upsert({
+            "id": req.id,
+            "user_id": req.user_id,
+            "name": req.name,
+            "data": data_json
+        }).execute()
+        
+        return {"status": "success", "message": "Workflow saved successfully.", "data": response.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
 @app.get("/api/workflows/{user_id}")
 async def list_workflows(user_id: str):
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, name, created_at FROM workflows WHERE user_id = ? ORDER BY created_at DESC", (user_id,))
-        rows = cursor.fetchall()
-        conn.close()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database connection not available")
         
-        workflows = [{"id": r[0], "name": r[1], "created_at": r[2]} for r in rows]
-        return {"workflows": workflows}
+    try:
+        response = supabase.table("workflows") \
+            .select("id, name, created_at") \
+            .eq("user_id", user_id) \
+            .order("created_at", desc=True) \
+            .execute()
+            
+        return {"workflows": response.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
 @app.get("/api/workflow-data/{workflow_id}")
 async def load_workflow(workflow_id: str):
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("SELECT data, name FROM workflows WHERE id = ?", (workflow_id,))
-        row = cursor.fetchone()
-        conn.close()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database connection not available")
         
-        if not row:
+    try:
+        response = supabase.table("workflows") \
+            .select("data, name") \
+            .eq("id", workflow_id) \
+            .execute()
+            
+        if not response.data:
             raise HTTPException(status_code=404, detail="Workflow not found.")
             
-        return {"nodes": json.loads(row[0]), "name": row[1]}
+        workflow = response.data[0]
+        return {"nodes": json.loads(workflow["data"]), "name": workflow["name"]}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
