@@ -7,7 +7,7 @@ import {
     FileCheck, FileJson, Share2, Database, LayoutDashboard,
     Sparkles, Zap, ChevronRight, Github, ExternalLink, Menu, X, ArrowLeft, Send, Loader2,
     Lock, Wand2, Calculator, Settings, Globe, Volume2, Copy, Play, Mail, Cpu, Orbit, Fingerprint, Shield, MessageSquare, Maximize2, Move,
-    Mic, MicOff, Bot, Check, CreditCard, Star, History, Save, FilePlus, FolderOpen
+    Mic, MicOff, Bot, Check, CreditCard, Star, History, Save, FilePlus, FolderOpen, Radio
 } from 'lucide-react';
 import axios from 'axios';
 import { clsx } from 'clsx';
@@ -15,6 +15,7 @@ import { twMerge } from 'tailwind-merge';
 import { SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Sphere, MeshDistortMaterial } from '@react-three/drei';
+import NewsPanel from './NewsPanel';
 
 function cn(...inputs) {
     return twMerge(clsx(inputs));
@@ -902,6 +903,7 @@ export default function App() {
     const [isContactOpen, setIsContactOpen] = useState(false);
     const [isAboutOpen, setIsAboutOpen] = useState(false);
     const [isPricingOpen, setIsPricingOpen] = useState(false);
+    const [isNewsOpen, setIsNewsOpen] = useState(false);
 
     // Mobile exclusive states
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -995,588 +997,595 @@ export default function App() {
     const centerY = typeof window !== 'undefined' ? window.innerHeight / 2 : 0;
 
     return (
-        <div className="min-h-screen bg-[#050505] text-zinc-300 font-sans selection:bg-indigo-500/30 overflow-hidden relative">
+        <>
+            <div className="min-h-screen bg-[#050505] text-zinc-300 font-sans selection:bg-indigo-500/30 overflow-hidden relative">
 
-            {/* 3D Background & Neural Architecture */}
-            <div className="fixed inset-0 z-0 pointer-events-none flex items-center justify-center">
-                <Canvas camera={{ position: [0, 0, 8] }} className="absolute inset-0">
-                    <ambientLight intensity={0.5} />
-                    <directionalLight position={[10, 10, 5]} intensity={1.5} color="#6366f1" />
-                    <pointLight position={[-10, -10, -5]} color="#22d3ee" intensity={2} />
-                    <pointLight position={[5, -5, 5]} color="#a855f7" intensity={1} />
+                {/* 3D Background & Neural Architecture */}
+                <div className="fixed inset-0 z-0 pointer-events-none flex items-center justify-center">
+                    <Canvas camera={{ position: [0, 0, 8] }} className="absolute inset-0">
+                        <ambientLight intensity={0.5} />
+                        <directionalLight position={[10, 10, 5]} intensity={1.5} color="#6366f1" />
+                        <pointLight position={[-10, -10, -5]} color="#22d3ee" intensity={2} />
+                        <pointLight position={[5, -5, 5]} color="#a855f7" intensity={1} />
 
-                    {/* Add the moving galaxy/stars effect */}
-                    <MovingStars />
-                    <FloatingTexts />
+                        {/* Add the moving galaxy/stars effect */}
+                        <MovingStars />
+                        <FloatingTexts />
 
-                    <BrainCore />
-                </Canvas>
+                        <BrainCore />
+                    </Canvas>
 
-                {/* Visual grid overlay for canvas feel */}
-                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:100px_100px] pointer-events-none" />
+                    {/* Visual grid overlay for canvas feel */}
+                    <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:100px_100px] pointer-events-none" />
 
-                {/* Optional radial fade so edges are darker */}
-                <div className="absolute inset-0 bg-radial-gradient from-transparent via-[#050505]/40 to-[#050505] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at center, transparent 0%, #050505 70%)' }}></div>
-            </div>
+                    {/* Optional radial fade so edges are darker */}
+                    <div className="absolute inset-0 bg-radial-gradient from-transparent via-[#050505]/40 to-[#050505] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at center, transparent 0%, #050505 70%)' }}></div>
+                </div>
 
-            {/* SVG Wires Layer */}
-            <svg className="fixed inset-0 w-full h-full pointer-events-none z-10" style={{ filter: 'drop-shadow(0 0 8px rgba(99,102,241,0.5))' }}>
-                <AnimatePresence>
-                    {nodes.map(node => {
-                        const targetX = node.x + 225; // center of node approx
-                        const targetY = node.y + 100; // middle of node approx
-                        const controlX = centerX + (targetX - centerX) / 2;
-                        return (
-                            <motion.path
-                                key={`wire-${node.id}`}
-                                initial={{ pathLength: 0, opacity: 0 }}
-                                animate={{ pathLength: 1, opacity: 0.3 }}
-                                exit={{ pathLength: 0, opacity: 0 }}
-                                transition={{ duration: 1, ease: "easeInOut" }}
-                                d={`M ${centerX} ${centerY} Q ${controlX} ${centerY} ${targetX} ${targetY}`}
-                                fill="none"
-                                stroke="url(#wireGradient)"
-                                strokeWidth="2"
-                                strokeDasharray="5,5"
-                                className="animate-[dash_30s_linear_infinite]"
-                            />
-                        );
-                    })}
-                </AnimatePresence>
-                <defs>
-                    <linearGradient id="wireGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#22d3ee" />
-                        <stop offset="50%" stopColor="#6366f1" />
-                        <stop offset="100%" stopColor="#a855f7" />
-                    </linearGradient>
-                </defs>
-            </svg>
-            <style jsx>{`
+                {/* SVG Wires Layer */}
+                <svg className="fixed inset-0 w-full h-full pointer-events-none z-10" style={{ filter: 'drop-shadow(0 0 8px rgba(99,102,241,0.5))' }}>
+                    <AnimatePresence>
+                        {nodes.map(node => {
+                            const targetX = node.x + 225; // center of node approx
+                            const targetY = node.y + 100; // middle of node approx
+                            const controlX = centerX + (targetX - centerX) / 2;
+                            return (
+                                <motion.path
+                                    key={`wire-${node.id}`}
+                                    initial={{ pathLength: 0, opacity: 0 }}
+                                    animate={{ pathLength: 1, opacity: 0.3 }}
+                                    exit={{ pathLength: 0, opacity: 0 }}
+                                    transition={{ duration: 1, ease: "easeInOut" }}
+                                    d={`M ${centerX} ${centerY} Q ${controlX} ${centerY} ${targetX} ${targetY}`}
+                                    fill="none"
+                                    stroke="url(#wireGradient)"
+                                    strokeWidth="2"
+                                    strokeDasharray="5,5"
+                                    className="animate-[dash_30s_linear_infinite]"
+                                />
+                            );
+                        })}
+                    </AnimatePresence>
+                    <defs>
+                        <linearGradient id="wireGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#22d3ee" />
+                            <stop offset="50%" stopColor="#6366f1" />
+                            <stop offset="100%" stopColor="#a855f7" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <style jsx>{`
                 @keyframes dash { to { stroke-dashoffset: -1000; } }
             `}</style>
 
-            {/* Top Navigation Bar */}
-            <nav className="fixed top-0 w-full z-50 bg-[#09090b]/40 backdrop-blur-2xl border-b border-white/[0.05]">
-                <div className="max-w-[1800px] mx-auto px-6 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-3 cursor-pointer group">
-                        <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center group-hover:bg-indigo-500/20 transition-all shadow-[0_0_15px_rgba(99,102,241,0.2)]">
-                            <Sparkles className="text-indigo-400 w-4 h-4" />
-                        </div>
-                        <span className="text-xl font-bold tracking-tight text-white font-display">Gistly<span className="text-indigo-400">.ai</span> <span className="text-[10px] text-zinc-500 uppercase tracking-widest ml-2 bg-white/5 py-1 px-2 rounded-full border border-white/5">Canvas Mode</span></span>
-                    </div>
-
-                    <div className="hidden md:flex items-center gap-6 text-sm font-medium">
-                        <button onClick={() => setIsGuideOpen(true)} className="text-zinc-400 hover:text-white transition-colors">Guide</button>
-                        <button onClick={() => setIsPricingOpen(true)} className="text-indigo-400 hover:text-indigo-300 font-bold transition-colors flex items-center gap-2">
-                            <Star className="w-4 h-4 fill-indigo-400/20" /> Pricing
-                        </button>
-                        <button onClick={() => setIsAboutOpen(true)} className="text-zinc-400 hover:text-white transition-colors">About Us</button>
-                        <button onClick={() => setIsContactOpen(true)} className="text-zinc-400 hover:text-white transition-colors">Contact</button>
-                        <div className="flex items-center gap-2 text-indigo-400/90 bg-indigo-400/10 px-3 py-1.5 rounded-full border border-indigo-400/20 cursor-default select-none pointer-events-none">
-                            <div className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></div>
-                            <span className="text-xs font-semibold tracking-wide uppercase">Core Online</span>
-                        </div>
-                        <SignedOut>
-                            <SignInButton mode="modal">
-                                <button className="bg-white text-black px-4 py-2 rounded-lg font-semibold hover:bg-zinc-200 transition-all text-xs">Sign In</button>
-                            </SignInButton>
-                        </SignedOut>
-                        <SignedIn>
-                            <UserButton appearance={{ elements: { userButtonAvatarBox: "w-8 h-8" } }} />
-                        </SignedIn>
-                    </div>
-                </div>
-            </nav>
-
-            {/* Floating Left Side Dashboard / Tool Dock (Desktop & Mobile Sheet) */}
-            <motion.div
-                initial={{ x: -100, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                className={cn(
-                    "fixed z-40 bg-[#111113]/60 backdrop-blur-3xl border border-white/10 flex flex-col shadow-2xl transition-all duration-300",
-                    isMobileMenuOpen
-                        ? "inset-x-0 bottom-20 top-20 rounded-t-3xl p-5 md:left-6 md:top-24 md:bottom-6 md:w-72 md:rounded-3xl"
-                        : "hidden md:flex left-6 top-24 bottom-6 w-72 rounded-3xl p-5"
-                )}
-            >
-                <div className="mb-6 space-y-4">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h2 className="text-sm font-bold text-white uppercase tracking-widest mb-1 flex items-center gap-2"><LayoutDashboard className="w-4 h-4 text-indigo-400" /> Tool Hub</h2>
-                            <p className="text-[10px] text-zinc-500 font-mono tracking-tighter">NODE DEPLOYMENT CORE</p>
-                        </div>
-                        <div className="flex gap-2">
-                            <button onClick={clearCanvas} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-zinc-500 hover:text-white transition-colors border border-white/5" title="New Canvas"><FilePlus className="w-4 h-4" /></button>
-                            <button onClick={fetchHistory} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-zinc-500 hover:text-indigo-400 transition-colors border border-white/5" title="Neural History"><History className="w-4 h-4" /></button>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 bg-black/40 border border-white/5 rounded-xl p-2 pl-3">
-                        <input
-                            value={workflowName}
-                            onChange={(e) => setWorkflowName(e.target.value)}
-                            className="bg-transparent text-[11px] text-zinc-300 outline-none w-full"
-                            placeholder="Architecture Name..."
-                        />
-                        <button
-                            onClick={saveWorkflow}
-                            disabled={isSaving || nodes.length === 0}
-                            className="p-1.5 bg-indigo-500 hover:bg-indigo-400 disabled:bg-zinc-800 disabled:text-zinc-600 rounded-lg transition-all"
-                        >
-                            {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin text-white" /> : <Save className="w-3.5 h-3.5 text-white" />}
-                        </button>
-                    </div>
-
-                    <div className="relative group/search">
-                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within/search:text-indigo-400 transition-colors">
-                            <Search className="w-3.5 h-3.5" />
-                        </div>
-                        <input
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full bg-black/40 border border-white/5 focus:border-indigo-500/50 rounded-xl py-2 pl-9 pr-4 text-[11px] text-zinc-300 outline-none transition-all placeholder:text-zinc-700"
-                            placeholder="Search nodes..."
-                        />
-                    </div>
-                </div>
-
-                {/* Filters */}
-                <div className="flex flex-wrap gap-2 mb-6 border-b border-white/5 pb-4">
-                    {categories.map((cat) => (
-                        <button
-                            key={cat}
-                            onClick={() => setSelectedCategory(cat)}
-                            className={cn(
-                                "px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all",
-                                selectedCategory === cat
-                                    ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
-                                    : "bg-white/5 text-zinc-500 hover:bg-white/10 hover:text-white border border-transparent"
-                            )}
-                        >
-                            {cat}
-                        </button>
-                    ))}
-                </div>
-
-                {/* Tool List */}
-                <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent pr-2 flex flex-col gap-3">
-                    {filteredTools.map((tool) => (
-                        <div
-                            key={tool.id}
-                            onClick={() => addNode(tool.id)}
-                            className="group bg-black/40 border border-white/5 hover:border-indigo-500/30 p-3 rounded-xl transition-all cursor-pointer flex items-center gap-3 hover:bg-white/[0.02]"
-                        >
-                            <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border", tool.bg, tool.border)}>
-                                <tool.icon className={cn("w-5 h-5", tool.color)} />
+                {/* Top Navigation Bar */}
+                <nav className="fixed top-0 w-full z-50 bg-[#09090b]/40 backdrop-blur-2xl border-b border-white/[0.05]">
+                    <div className="max-w-[1800px] mx-auto px-6 h-16 flex items-center justify-between">
+                        <div className="flex items-center gap-3 cursor-pointer group">
+                            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center group-hover:bg-indigo-500/20 transition-all shadow-[0_0_15px_rgba(99,102,241,0.2)]">
+                                <Sparkles className="text-indigo-400 w-4 h-4" />
                             </div>
+                            <span className="text-xl font-bold tracking-tight text-white font-display">Gistly<span className="text-indigo-400">.ai</span> <span className="text-[10px] text-zinc-500 uppercase tracking-widest ml-2 bg-white/5 py-1 px-2 rounded-full border border-white/5">Canvas Mode</span></span>
+                        </div>
+
+                        <div className="hidden md:flex items-center gap-6 text-sm font-medium">
+                            <button onClick={() => setIsNewsOpen(true)} className="text-red-400 hover:text-red-300 font-bold tracking-widest uppercase text-xs flex items-center gap-2 border border-red-500/20 bg-red-500/10 px-3 py-1.5 rounded-full shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+                                <Radio className="w-3.5 h-3.5 animate-pulse" /> Live News
+                            </button>
+                            <button onClick={() => setIsGuideOpen(true)} className="text-zinc-400 hover:text-white transition-colors">Guide</button>
+                            <button onClick={() => setIsPricingOpen(true)} className="text-indigo-400 hover:text-indigo-300 font-bold transition-colors flex items-center gap-2">
+                                <Star className="w-4 h-4 fill-indigo-400/20" /> Pricing
+                            </button>
+                            <button onClick={() => setIsAboutOpen(true)} className="text-zinc-400 hover:text-white transition-colors">About Us</button>
+                            <button onClick={() => setIsContactOpen(true)} className="text-zinc-400 hover:text-white transition-colors">Contact</button>
+                            <div className="flex items-center gap-2 text-indigo-400/90 bg-indigo-400/10 px-3 py-1.5 rounded-full border border-indigo-400/20 cursor-default select-none pointer-events-none">
+                                <div className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></div>
+                                <span className="text-xs font-semibold tracking-wide uppercase">Core Online</span>
+                            </div>
+                            <SignedOut>
+                                <SignInButton mode="modal">
+                                    <button className="bg-white text-black px-4 py-2 rounded-lg font-semibold hover:bg-zinc-200 transition-all text-xs">Sign In</button>
+                                </SignInButton>
+                            </SignedOut>
+                            <SignedIn>
+                                <UserButton appearance={{ elements: { userButtonAvatarBox: "w-8 h-8" } }} />
+                            </SignedIn>
+                        </div>
+                    </div>
+                </nav>
+
+                {/* Floating Left Side Dashboard / Tool Dock (Desktop & Mobile Sheet) */}
+                <motion.div
+                    initial={{ x: -100, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    className={cn(
+                        "fixed z-40 bg-[#111113]/60 backdrop-blur-3xl border border-white/10 flex flex-col shadow-2xl transition-all duration-300",
+                        isMobileMenuOpen
+                            ? "inset-x-0 bottom-20 top-20 rounded-t-3xl p-5 md:left-6 md:top-24 md:bottom-6 md:w-72 md:rounded-3xl"
+                            : "hidden md:flex left-6 top-24 bottom-6 w-72 rounded-3xl p-5"
+                    )}
+                >
+                    <div className="mb-6 space-y-4">
+                        <div className="flex items-center justify-between">
                             <div>
-                                <h3 className="text-sm font-bold text-zinc-200 group-hover:text-indigo-400 transition-colors">{tool.name}</h3>
-                                <p className="text-[10px] text-zinc-600 line-clamp-1">{tool.description}</p>
+                                <h2 className="text-sm font-bold text-white uppercase tracking-widest mb-1 flex items-center gap-2"><LayoutDashboard className="w-4 h-4 text-indigo-400" /> Tool Hub</h2>
+                                <p className="text-[10px] text-zinc-500 font-mono tracking-tighter">NODE DEPLOYMENT CORE</p>
+                            </div>
+                            <div className="flex gap-2">
+                                <button onClick={clearCanvas} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-zinc-500 hover:text-white transition-colors border border-white/5" title="New Canvas"><FilePlus className="w-4 h-4" /></button>
+                                <button onClick={fetchHistory} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-zinc-500 hover:text-indigo-400 transition-colors border border-white/5" title="Neural History"><History className="w-4 h-4" /></button>
                             </div>
                         </div>
+
+                        <div className="flex items-center gap-2 bg-black/40 border border-white/5 rounded-xl p-2 pl-3">
+                            <input
+                                value={workflowName}
+                                onChange={(e) => setWorkflowName(e.target.value)}
+                                className="bg-transparent text-[11px] text-zinc-300 outline-none w-full"
+                                placeholder="Architecture Name..."
+                            />
+                            <button
+                                onClick={saveWorkflow}
+                                disabled={isSaving || nodes.length === 0}
+                                className="p-1.5 bg-indigo-500 hover:bg-indigo-400 disabled:bg-zinc-800 disabled:text-zinc-600 rounded-lg transition-all"
+                            >
+                                {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin text-white" /> : <Save className="w-3.5 h-3.5 text-white" />}
+                            </button>
+                        </div>
+
+                        <div className="relative group/search">
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within/search:text-indigo-400 transition-colors">
+                                <Search className="w-3.5 h-3.5" />
+                            </div>
+                            <input
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full bg-black/40 border border-white/5 focus:border-indigo-500/50 rounded-xl py-2 pl-9 pr-4 text-[11px] text-zinc-300 outline-none transition-all placeholder:text-zinc-700"
+                                placeholder="Search nodes..."
+                            />
+                        </div>
+                    </div>
+
+                    {/* Filters */}
+                    <div className="flex flex-wrap gap-2 mb-6 border-b border-white/5 pb-4">
+                        {categories.map((cat) => (
+                            <button
+                                key={cat}
+                                onClick={() => setSelectedCategory(cat)}
+                                className={cn(
+                                    "px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all",
+                                    selectedCategory === cat
+                                        ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
+                                        : "bg-white/5 text-zinc-500 hover:bg-white/10 hover:text-white border border-transparent"
+                                )}
+                            >
+                                {cat}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Tool List */}
+                    <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent pr-2 flex flex-col gap-3">
+                        {filteredTools.map((tool) => (
+                            <div
+                                key={tool.id}
+                                onClick={() => addNode(tool.id)}
+                                className="group bg-black/40 border border-white/5 hover:border-indigo-500/30 p-3 rounded-xl transition-all cursor-pointer flex items-center gap-3 hover:bg-white/[0.02]"
+                            >
+                                <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border", tool.bg, tool.border)}>
+                                    <tool.icon className={cn("w-5 h-5", tool.color)} />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-bold text-zinc-200 group-hover:text-indigo-400 transition-colors">{tool.name}</h3>
+                                    <p className="text-[10px] text-zinc-600 line-clamp-1">{tool.description}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="mt-4 pt-4 border-t border-white/5 text-[9px] text-center text-zinc-600 font-mono">
+                        System Architecture Ready
+                    </div>
+                </motion.div>
+
+                {/* The Infinite Canvas Content */}
+                <div className="absolute inset-0 z-20 pointer-events-none">
+                    <AnimatePresence>
+                        {nodes.length === 0 && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute top-1/2 left-[calc(50%+144px)] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center text-center pointer-events-none"
+                            >
+                                <div className="w-24 h-24 rounded-full border border-indigo-500/30 flex items-center justify-center p-3 animate-[pulse_4s_ease-in-out_infinite] mb-6 relative">
+                                    <div className="absolute inset-0 border border-cyan-400/20 rounded-full animate-ping pointer-events-none" style={{ animationDuration: '3s' }}></div>
+                                    <Sparkles className="w-8 h-8 text-indigo-400 opacity-50" />
+                                </div>
+                                <h2 className="text-2xl font-bold text-white mb-2 font-display tracking-tight">Infinite Architecture</h2>
+                                <p className="text-sm text-zinc-500 max-w-sm">
+                                    Create an unstructured intelligence pipeline. Select nodes from the Hub on your left to deploy microservices into the workspace.
+                                </p>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {nodes.map(node => (
+                        <DraggableNode
+                            key={node.id}
+                            data={node}
+                            removeNode={removeNode}
+                            updateNodePosition={updateNodePosition}
+                        />
                     ))}
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-white/5 text-[9px] text-center text-zinc-600 font-mono">
-                    System Architecture Ready
-                </div>
-            </motion.div>
-
-            {/* The Infinite Canvas Content */}
-            <div className="absolute inset-0 z-20 pointer-events-none">
+                {/* Guide Modal */}
                 <AnimatePresence>
-                    {nodes.length === 0 && (
+                    {isGuideOpen && (
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="absolute top-1/2 left-[calc(50%+144px)] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center text-center pointer-events-none"
+                            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
                         >
-                            <div className="w-24 h-24 rounded-full border border-indigo-500/30 flex items-center justify-center p-3 animate-[pulse_4s_ease-in-out_infinite] mb-6 relative">
-                                <div className="absolute inset-0 border border-cyan-400/20 rounded-full animate-ping pointer-events-none" style={{ animationDuration: '3s' }}></div>
-                                <Sparkles className="w-8 h-8 text-indigo-400 opacity-50" />
-                            </div>
-                            <h2 className="text-2xl font-bold text-white mb-2 font-display tracking-tight">Infinite Architecture</h2>
-                            <p className="text-sm text-zinc-500 max-w-sm">
-                                Create an unstructured intelligence pipeline. Select nodes from the Hub on your left to deploy microservices into the workspace.
-                            </p>
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                                className="bg-[#111113]/70 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl max-w-xl w-full shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] relative overflow-hidden group"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+                                <button
+                                    onClick={() => setIsGuideOpen(false)}
+                                    className="absolute top-6 right-6 text-zinc-500 hover:text-white transition-colors"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+
+                                <h3 className="text-2xl font-bold text-white mb-2 tracking-tight font-display">Infinite Canvas Guide</h3>
+                                <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
+                                    Welcome to the most advanced AI workstation.
+                                </p>
+
+                                <div className="space-y-4">
+                                    <div className="flex items-start gap-3">
+                                        <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold mt-0.5 border border-indigo-500/30 shrink-0">1</div>
+                                        <div>
+                                            <h4 className="text-zinc-200 font-semibold text-sm">Deploy Nodes</h4>
+                                            <p className="text-zinc-500 text-xs mt-1 leading-relaxed">Click any tool on the left dashboard to spawn a floating neural node into your workspace.</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-start gap-3">
+                                        <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold mt-0.5 border border-indigo-500/30 shrink-0">2</div>
+                                        <div>
+                                            <h4 className="text-zinc-200 font-semibold text-sm">Arrange & Build</h4>
+                                            <p className="text-zinc-500 text-xs mt-1 leading-relaxed">Drag nodes anywhere on the screen. The central AI core will draw neural links to active processes automatically.</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-start gap-3">
+                                        <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold mt-0.5 border border-indigo-500/30 shrink-0">3</div>
+                                        <div>
+                                            <h4 className="text-zinc-200 font-semibold text-sm">Execute in Parallel</h4>
+                                            <p className="text-zinc-500 text-xs mt-1 leading-relaxed">Run multiple tools at the exact same time. The core handles concurrent processing flawlessly.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="mt-8 pt-6 border-t border-white/5 flex justify-end">
+                                    <button
+                                        onClick={() => setIsGuideOpen(false)}
+                                        className="px-5 py-2 bg-white text-black text-sm font-bold rounded-xl hover:bg-zinc-200 transition-all active:scale-[0.98]"
+                                    >
+                                        Initialize System
+                                    </button>
+                                </div>
+                            </motion.div>
                         </motion.div>
                     )}
                 </AnimatePresence>
 
-                {nodes.map(node => (
-                    <DraggableNode
-                        key={node.id}
-                        data={node}
-                        removeNode={removeNode}
-                        updateNodePosition={updateNodePosition}
-                    />
-                ))}
-            </div>
-
-            {/* Guide Modal */}
-            <AnimatePresence>
-                {isGuideOpen && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
-                    >
+                {/* Neural Uplink (Contact) Modal */}
+                <AnimatePresence>
+                    {isContactOpen && (
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                            className="bg-[#111113]/70 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl max-w-xl w-full shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] relative overflow-hidden group"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-xl p-4"
                         >
-                            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-                            <button
-                                onClick={() => setIsGuideOpen(false)}
-                                className="absolute top-6 right-6 text-zinc-500 hover:text-white transition-colors"
+                            <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:50px_50px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none"></div>
+
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                                className="bg-[#0c0c0e]/90 border border-indigo-500/20 p-0 rounded-3xl max-w-2xl w-full shadow-[0_0_50px_rgba(99,102,241,0.1)] relative overflow-hidden"
                             >
-                                <X className="w-5 h-5" />
-                            </button>
+                                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-indigo-500 to-purple-500"></div>
 
-                            <h3 className="text-2xl font-bold text-white mb-2 tracking-tight font-display">Infinite Canvas Guide</h3>
-                            <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
-                                Welcome to the most advanced AI workstation.
-                            </p>
-
-                            <div className="space-y-4">
-                                <div className="flex items-start gap-3">
-                                    <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold mt-0.5 border border-indigo-500/30 shrink-0">1</div>
-                                    <div>
-                                        <h4 className="text-zinc-200 font-semibold text-sm">Deploy Nodes</h4>
-                                        <p className="text-zinc-500 text-xs mt-1 leading-relaxed">Click any tool on the left dashboard to spawn a floating neural node into your workspace.</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-start gap-3">
-                                    <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold mt-0.5 border border-indigo-500/30 shrink-0">2</div>
-                                    <div>
-                                        <h4 className="text-zinc-200 font-semibold text-sm">Arrange & Build</h4>
-                                        <p className="text-zinc-500 text-xs mt-1 leading-relaxed">Drag nodes anywhere on the screen. The central AI core will draw neural links to active processes automatically.</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-start gap-3">
-                                    <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold mt-0.5 border border-indigo-500/30 shrink-0">3</div>
-                                    <div>
-                                        <h4 className="text-zinc-200 font-semibold text-sm">Execute in Parallel</h4>
-                                        <p className="text-zinc-500 text-xs mt-1 leading-relaxed">Run multiple tools at the exact same time. The core handles concurrent processing flawlessly.</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="mt-8 pt-6 border-t border-white/5 flex justify-end">
                                 <button
-                                    onClick={() => setIsGuideOpen(false)}
-                                    className="px-5 py-2 bg-white text-black text-sm font-bold rounded-xl hover:bg-zinc-200 transition-all active:scale-[0.98]"
+                                    onClick={() => setIsContactOpen(false)}
+                                    className="absolute top-6 right-6 text-zinc-500 hover:text-indigo-400 transition-colors z-10"
                                 >
-                                    Initialize System
+                                    <X className="w-5 h-5" />
                                 </button>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
 
-            {/* Neural Uplink (Contact) Modal */}
-            <AnimatePresence>
-                {isContactOpen && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-xl p-4"
-                    >
-                        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:50px_50px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none"></div>
-
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                            className="bg-[#0c0c0e]/90 border border-indigo-500/20 p-0 rounded-3xl max-w-2xl w-full shadow-[0_0_50px_rgba(99,102,241,0.1)] relative overflow-hidden"
-                        >
-                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-indigo-500 to-purple-500"></div>
-
-                            <button
-                                onClick={() => setIsContactOpen(false)}
-                                className="absolute top-6 right-6 text-zinc-500 hover:text-indigo-400 transition-colors z-10"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-
-                            <div className="p-8 md:p-10 relative z-10">
-                                <div className="flex items-center gap-4 mb-2">
-                                    <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
-                                        <Orbit className="w-6 h-6 text-indigo-400 animate-[spin_10s_linear_infinite]" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-3xl font-bold text-white tracking-tight font-display flex items-center gap-2">
-                                            Neural <span className="text-indigo-400">Uplink</span>
-                                        </h3>
-                                        <p className="text-zinc-500 text-xs font-mono uppercase tracking-widest mt-1">Direct Secure Transmission</p>
-                                    </div>
-                                </div>
-
-                                <p className="text-zinc-400 text-sm mt-6 mb-8 leading-relaxed">
-                                    Initialize a secure channel to our engineering core. Whether you seek custom integrations, encountered an anomaly, or wish to forge an alliance, our nodes are receptive.
-                                </p>
-
-                                <div className="bg-black/50 border border-indigo-500/20 rounded-2xl p-6 mb-8 relative group overflow-hidden">
-                                    <div className="absolute inset-0 bg-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                    <div className="flex items-center gap-4 relative z-10">
-                                        <div className="bg-indigo-500/20 p-3 rounded-full border border-indigo-500/30">
-                                            <Mail className="w-6 h-6 text-indigo-300" />
+                                <div className="p-8 md:p-10 relative z-10">
+                                    <div className="flex items-center gap-4 mb-2">
+                                        <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
+                                            <Orbit className="w-6 h-6 text-indigo-400 animate-[spin_10s_linear_infinite]" />
                                         </div>
                                         <div>
-                                            <p className="text-xs text-zinc-500 uppercase font-bold tracking-widest mb-1">Primary Transmission Endpoint</p>
-                                            <a href="mailto:contact@gistly.site" className="text-xl font-mono text-white hover:text-indigo-400 transition-colors font-bold tracking-tighter">
-                                                contact<span className="text-indigo-400">@</span>gistly.site
-                                            </a>
+                                            <h3 className="text-3xl font-bold text-white tracking-tight font-display flex items-center gap-2">
+                                                Neural <span className="text-indigo-400">Uplink</span>
+                                            </h3>
+                                            <p className="text-zinc-500 text-xs font-mono uppercase tracking-widest mt-1">Direct Secure Transmission</p>
                                         </div>
                                     </div>
-                                </div>
 
-                                <h4 className="text-sm font-bold text-white mb-4 uppercase tracking-widest flex items-center gap-2">
-                                    <Database className="w-4 h-4 text-indigo-400" /> Frequently Queried Sectors (FAQ)
-                                </h4>
+                                    <p className="text-zinc-400 text-sm mt-6 mb-8 leading-relaxed">
+                                        Initialize a secure channel to our engineering core. Whether you seek custom integrations, encountered an anomaly, or wish to forge an alliance, our nodes are receptive.
+                                    </p>
 
-                                <div className="space-y-3">
-                                    <div className="bg-white/5 border border-white/10 p-4 rounded-xl hover:bg-white/10 transition-colors">
-                                        <h5 className="font-bold text-zinc-200 text-sm flex items-center gap-2 mb-2">
-                                            <Terminal className="w-4 h-4 text-cyan-400" /> What is the API rate limit?
-                                        </h5>
-                                        <p className="text-zinc-500 text-xs leading-relaxed">Standard nodes guarantee up to 100 requests per minute. Enterprise compute clusters available upon negotiation.</p>
-                                    </div>
-                                    <div className="bg-white/5 border border-white/10 p-4 rounded-xl hover:bg-white/10 transition-colors">
-                                        <h5 className="font-bold text-zinc-200 text-sm flex items-center gap-2 mb-2">
-                                            <Shield className="w-4 h-4 text-emerald-400" /> Is my data retained?
-                                        </h5>
-                                        <p className="text-zinc-500 text-xs leading-relaxed">Negative. All transmission protocols are end-to-end encrypted. We employ a strict zero-retention policy natively; data evaporates post-processing.</p>
-                                    </div>
-                                    <div className="bg-white/5 border border-white/10 p-4 rounded-xl hover:bg-white/10 transition-colors">
-                                        <h5 className="font-bold text-zinc-200 text-sm flex items-center gap-2 mb-2">
-                                            <Cpu className="w-4 h-4 text-purple-400" /> Custom AI Model Training?
-                                        </h5>
-                                        <p className="text-zinc-500 text-xs leading-relaxed">We can partition dedicated architectures for your unique datasets. Reach out to the email above to initialize discussions.</p>
-                                    </div>
-                                </div>
-
-                                <div className="mt-8 flex justify-end">
-                                    <button
-                                        onClick={() => setIsContactOpen(false)}
-                                        className="px-6 py-2.5 bg-indigo-500/10 text-indigo-400 border border-indigo-500/50 text-sm font-bold uppercase tracking-widest rounded-xl hover:bg-indigo-500 hover:text-white transition-all shadow-[0_0_15px_rgba(99,102,241,0.2)]"
-                                    >
-                                        End Transmission
-                                    </button>
-                                </div>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* About The Nexus (About Us) Modal */}
-            <AnimatePresence>
-                {isAboutOpen && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4"
-                    >
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: -20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="bg-[#09090b] border border-cyan-500/20 p-0 rounded-3xl max-w-3xl w-full shadow-[0_0_80px_rgba(34,211,238,0.05)] relative overflow-hidden"
-                        >
-                            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
-
-                            <button
-                                onClick={() => setIsAboutOpen(false)}
-                                className="absolute top-6 right-6 text-zinc-500 hover:text-cyan-400 transition-colors z-50 bg-black/50 p-2 rounded-full backdrop-blur-md"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 relative z-10">
-                                <div className="p-8 md:p-10 border-r border-white/5 bg-white/[0.02] flex flex-col justify-between">
-                                    <div>
-                                        <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mb-6">
-                                            <Fingerprint className="w-6 h-6 text-cyan-400" />
-                                        </div>
-                                        <h3 className="text-4xl font-black text-white tracking-tighter font-display leading-none mb-4">
-                                            The <br />Architecture <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400">Of Mind.</span>
-                                        </h3>
-                                        <p className="text-zinc-400 text-sm leading-relaxed mb-6 border-l-2 border-cyan-500/30 pl-4 py-1 italic">
-                                            "We do not just build software. We construct digital cognition tailored to elevate human potential."
-                                        </p>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="bg-black/40 rounded-xl p-4 border border-white/5">
-                                            <div className="text-2xl font-bold text-white mb-1">99.9%</div>
-                                            <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Uptime Synergy</div>
-                                        </div>
-                                        <div className="bg-black/40 rounded-xl p-4 border border-white/5">
-                                            <div className="text-2xl font-bold text-white mb-1">&lt;15ms</div>
-                                            <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Neural Latency</div>
+                                    <div className="bg-black/50 border border-indigo-500/20 rounded-2xl p-6 mb-8 relative group overflow-hidden">
+                                        <div className="absolute inset-0 bg-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                        <div className="flex items-center gap-4 relative z-10">
+                                            <div className="bg-indigo-500/20 p-3 rounded-full border border-indigo-500/30">
+                                                <Mail className="w-6 h-6 text-indigo-300" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-zinc-500 uppercase font-bold tracking-widest mb-1">Primary Transmission Endpoint</p>
+                                                <a href="mailto:contact@gistly.site" className="text-xl font-mono text-white hover:text-indigo-400 transition-colors font-bold tracking-tighter">
+                                                    contact<span className="text-indigo-400">@</span>gistly.site
+                                                </a>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <div className="p-8 md:p-10">
                                     <h4 className="text-sm font-bold text-white mb-4 uppercase tracking-widest flex items-center gap-2">
-                                        <Zap className="w-4 h-4 text-cyan-400" /> Genesis Protocol
+                                        <Database className="w-4 h-4 text-indigo-400" /> Frequently Queried Sectors (FAQ)
                                     </h4>
 
-                                    <div className="space-y-6 text-sm text-zinc-300 leading-relaxed">
-                                        <p>
-                                            <strong className="text-white">Gistly.ai</strong> was forged from a singular directive: to make enterprise-grade artificial intelligence accessible, rapid, and flawlessly integrated into daily workflows.
-                                        </p>
-                                        <p>
-                                            We operate on the bleeding edge of the <span className="text-cyan-400 font-mono">Large Language Frontier</span>. Rather than simple text inputs, we built the world's first true intelligence workstation pipeline.
-                                        </p>
+                                    <div className="space-y-3">
+                                        <div className="bg-white/5 border border-white/10 p-4 rounded-xl hover:bg-white/10 transition-colors">
+                                            <h5 className="font-bold text-zinc-200 text-sm flex items-center gap-2 mb-2">
+                                                <Terminal className="w-4 h-4 text-cyan-400" /> What is the API rate limit?
+                                            </h5>
+                                            <p className="text-zinc-500 text-xs leading-relaxed">Standard nodes guarantee up to 100 requests per minute. Enterprise compute clusters available upon negotiation.</p>
+                                        </div>
+                                        <div className="bg-white/5 border border-white/10 p-4 rounded-xl hover:bg-white/10 transition-colors">
+                                            <h5 className="font-bold text-zinc-200 text-sm flex items-center gap-2 mb-2">
+                                                <Shield className="w-4 h-4 text-emerald-400" /> Is my data retained?
+                                            </h5>
+                                            <p className="text-zinc-500 text-xs leading-relaxed">Negative. All transmission protocols are end-to-end encrypted. We employ a strict zero-retention policy natively; data evaporates post-processing.</p>
+                                        </div>
+                                        <div className="bg-white/5 border border-white/10 p-4 rounded-xl hover:bg-white/10 transition-colors">
+                                            <h5 className="font-bold text-zinc-200 text-sm flex items-center gap-2 mb-2">
+                                                <Cpu className="w-4 h-4 text-purple-400" /> Custom AI Model Training?
+                                            </h5>
+                                            <p className="text-zinc-500 text-xs leading-relaxed">We can partition dedicated architectures for your unique datasets. Reach out to the email above to initialize discussions.</p>
+                                        </div>
+                                    </div>
 
-                                        <div className="pt-4 mt-4 border-t border-white/10">
-                                            <h5 className="font-bold text-zinc-100 mb-3 text-xs uppercase tracking-widest opacity-60">Our Core Directives</h5>
-                                            <ul className="space-y-3">
-                                                <li className="flex items-start gap-3">
-                                                    <div className="w-1.5 h-1.5 mt-2 rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]"></div>
-                                                    <span className="text-zinc-400"><strong className="text-zinc-200">Velocity:</strong> Idea to execution in milliseconds.</span>
-                                                </li>
-                                                <li className="flex items-start gap-3">
-                                                    <div className="w-1.5 h-1.5 mt-2 rounded-full bg-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.8)]"></div>
-                                                    <span className="text-zinc-400"><strong className="text-zinc-200">Integrity:</strong> Uncompromising data privacy and ethical model constraints.</span>
-                                                </li>
-                                                <li className="flex items-start gap-3">
-                                                    <div className="w-1.5 h-1.5 mt-2 rounded-full bg-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.8)]"></div>
-                                                    <span className="text-zinc-400"><strong className="text-zinc-200">Elegance:</strong> Interfaces that feel like extensions of thought.</span>
-                                                </li>
-                                            </ul>
+                                    <div className="mt-8 flex justify-end">
+                                        <button
+                                            onClick={() => setIsContactOpen(false)}
+                                            className="px-6 py-2.5 bg-indigo-500/10 text-indigo-400 border border-indigo-500/50 text-sm font-bold uppercase tracking-widest rounded-xl hover:bg-indigo-500 hover:text-white transition-all shadow-[0_0_15px_rgba(99,102,241,0.2)]"
+                                        >
+                                            End Transmission
+                                        </button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* About The Nexus (About Us) Modal */}
+                <AnimatePresence>
+                    {isAboutOpen && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4"
+                        >
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: -20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                                className="bg-[#09090b] border border-cyan-500/20 p-0 rounded-3xl max-w-3xl w-full shadow-[0_0_80px_rgba(34,211,238,0.05)] relative overflow-hidden"
+                            >
+                                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+
+                                <button
+                                    onClick={() => setIsAboutOpen(false)}
+                                    className="absolute top-6 right-6 text-zinc-500 hover:text-cyan-400 transition-colors z-50 bg-black/50 p-2 rounded-full backdrop-blur-md"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 relative z-10">
+                                    <div className="p-8 md:p-10 border-r border-white/5 bg-white/[0.02] flex flex-col justify-between">
+                                        <div>
+                                            <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mb-6">
+                                                <Fingerprint className="w-6 h-6 text-cyan-400" />
+                                            </div>
+                                            <h3 className="text-4xl font-black text-white tracking-tighter font-display leading-none mb-4">
+                                                The <br />Architecture <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400">Of Mind.</span>
+                                            </h3>
+                                            <p className="text-zinc-400 text-sm leading-relaxed mb-6 border-l-2 border-cyan-500/30 pl-4 py-1 italic">
+                                                "We do not just build software. We construct digital cognition tailored to elevate human potential."
+                                            </p>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="bg-black/40 rounded-xl p-4 border border-white/5">
+                                                <div className="text-2xl font-bold text-white mb-1">99.9%</div>
+                                                <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Uptime Synergy</div>
+                                            </div>
+                                            <div className="bg-black/40 rounded-xl p-4 border border-white/5">
+                                                <div className="text-2xl font-bold text-white mb-1">&lt;15ms</div>
+                                                <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Neural Latency</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="p-8 md:p-10">
+                                        <h4 className="text-sm font-bold text-white mb-4 uppercase tracking-widest flex items-center gap-2">
+                                            <Zap className="w-4 h-4 text-cyan-400" /> Genesis Protocol
+                                        </h4>
+
+                                        <div className="space-y-6 text-sm text-zinc-300 leading-relaxed">
+                                            <p>
+                                                <strong className="text-white">Gistly.ai</strong> was forged from a singular directive: to make enterprise-grade artificial intelligence accessible, rapid, and flawlessly integrated into daily workflows.
+                                            </p>
+                                            <p>
+                                                We operate on the bleeding edge of the <span className="text-cyan-400 font-mono">Large Language Frontier</span>. Rather than simple text inputs, we built the world's first true intelligence workstation pipeline.
+                                            </p>
+
+                                            <div className="pt-4 mt-4 border-t border-white/10">
+                                                <h5 className="font-bold text-zinc-100 mb-3 text-xs uppercase tracking-widest opacity-60">Our Core Directives</h5>
+                                                <ul className="space-y-3">
+                                                    <li className="flex items-start gap-3">
+                                                        <div className="w-1.5 h-1.5 mt-2 rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]"></div>
+                                                        <span className="text-zinc-400"><strong className="text-zinc-200">Velocity:</strong> Idea to execution in milliseconds.</span>
+                                                    </li>
+                                                    <li className="flex items-start gap-3">
+                                                        <div className="w-1.5 h-1.5 mt-2 rounded-full bg-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.8)]"></div>
+                                                        <span className="text-zinc-400"><strong className="text-zinc-200">Integrity:</strong> Uncompromising data privacy and ethical model constraints.</span>
+                                                    </li>
+                                                    <li className="flex items-start gap-3">
+                                                        <div className="w-1.5 h-1.5 mt-2 rounded-full bg-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.8)]"></div>
+                                                        <span className="text-zinc-400"><strong className="text-zinc-200">Elegance:</strong> Interfaces that feel like extensions of thought.</span>
+                                                    </li>
+                                                </ul>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                            </motion.div>
                         </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                    )}
+                </AnimatePresence>
 
-            <PricingModal isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
+                <PricingModal isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
 
-            {/* Workflow History Modal */}
-            <AnimatePresence>
-                {isHistoryOpen && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-xl p-4"
-                    >
+                {/* Workflow History Modal */}
+                <AnimatePresence>
+                    {isHistoryOpen && (
                         <motion.div
-                            initial={{ scale: 0.95, y: 10 }}
-                            animate={{ scale: 1, y: 0 }}
-                            exit={{ scale: 0.95, y: 10 }}
-                            className="bg-[#111113]/70 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl max-w-md w-full shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] relative overflow-hidden group"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-xl p-4"
                         >
-                            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-                            <button
-                                onClick={() => setIsHistoryOpen(false)}
-                                className="absolute top-6 right-6 text-zinc-500 hover:text-white transition-colors"
+                            <motion.div
+                                initial={{ scale: 0.95, y: 10 }}
+                                animate={{ scale: 1, y: 0 }}
+                                exit={{ scale: 0.95, y: 10 }}
+                                className="bg-[#111113]/70 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl max-w-md w-full shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] relative overflow-hidden group"
                             >
-                                <X className="w-5 h-5" />
-                            </button>
-
-                            <h3 className="text-2xl font-bold text-white mb-2 tracking-tight flex items-center gap-3">
-                                <History className="w-6 h-6 text-indigo-400" /> Workflow History
-                            </h3>
-                            <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
-                                Load previously deployed neural architectures.
-                            </p>
-
-                            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-                                {history.length === 0 ? (
-                                    <div className="text-center py-10 text-zinc-600 font-mono text-xs">
-                                        NO ARCHIVES FOUND
-                                    </div>
-                                ) : (
-                                    history.map((flow) => (
-                                        <div
-                                            key={flow.id}
-                                            onClick={() => loadWorkflow(flow.id)}
-                                            className="group bg-white/[0.03] border border-white/5 p-4 rounded-2xl hover:border-indigo-500/30 transition-all cursor-pointer flex items-center justify-between"
-                                        >
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20 group-hover:bg-indigo-500/20">
-                                                    <FolderOpen className="w-5 h-5 text-indigo-400" />
-                                                </div>
-                                                <div>
-                                                    <h4 className="text-zinc-200 font-bold text-sm group-hover:text-white transition-colors">{flow.name}</h4>
-                                                    <p className="text-[10px] text-zinc-600 font-mono">{new Date(flow.created_at).toLocaleDateString()}</p>
-                                                </div>
-                                            </div>
-                                            <ChevronRight className="w-4 h-4 text-zinc-700 group-hover:text-white transition-all transform group-hover:translate-x-1" />
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            <GistlyVoiceAssistant />
-
-            {/* Mobile Bottom Navigation App Bar */}
-            <div className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-[#09090b]/80 backdrop-blur-2xl border-t border-white/10 z-[100] pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
-                <div className="flex items-center justify-around h-full px-2">
-                    <button
-                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                        className={cn("flex flex-col items-center justify-center w-16 h-full gap-1 transition-colors", isMobileMenuOpen ? "text-indigo-400" : "text-zinc-500 hover:text-zinc-300")}
-                    >
-                        <LayoutDashboard className="w-6 h-6" />
-                        <span className="text-[10px] font-bold tracking-wider">Tools</span>
-                    </button>
-
-                    <button onClick={fetchHistory} className="flex flex-col items-center justify-center w-16 h-full gap-1 text-zinc-500 hover:text-indigo-400 transition-colors">
-                        <History className="w-6 h-6" />
-                        <span className="text-[10px] font-bold tracking-wider">History</span>
-                    </button>
-
-                    {/* Floating FAB - Center Clear Canvas Action */}
-                    <div className="relative -top-6 flex flex-col items-center">
-                        <button
-                            onClick={clearCanvas}
-                            style={{ WebkitTapHighlightColor: 'transparent' }}
-                            className="w-14 h-14 bg-gradient-to-tr from-indigo-600 to-cyan-500 rounded-full flex items-center justify-center shadow-[0_10px_30px_rgba(99,102,241,0.5)] border-2 border-[#09090b] text-white active:scale-95 transition-all outline-none"
-                        >
-                            <FilePlus className="w-6 h-6 drop-shadow-md" />
-                        </button>
-                    </div>
-
-                    <button onClick={() => setIsGuideOpen(true)} className="flex flex-col items-center justify-center w-16 h-full gap-1 text-zinc-500 hover:text-indigo-400 transition-colors">
-                        <Sparkles className="w-6 h-6" />
-                        <span className="text-[10px] font-bold tracking-wider">Guide</span>
-                    </button>
-
-                    <div className="flex flex-col items-center justify-center w-16 h-full gap-1">
-                        <SignedIn>
-                            <UserButton appearance={{ elements: { userButtonAvatarBox: "w-7 h-7 border-2 border-[#09090b] shadow-md" } }} />
-                        </SignedIn>
-                        <SignedOut>
-                            <SignInButton mode="modal">
-                                <button className="text-zinc-500 flex flex-col items-center gap-1 hover:text-zinc-300">
-                                    <UserCheck className="w-6 h-6" />
-                                    <span className="text-[10px] font-bold tracking-wider">Sign In</span>
+                                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+                                <button
+                                    onClick={() => setIsHistoryOpen(false)}
+                                    className="absolute top-6 right-6 text-zinc-500 hover:text-white transition-colors"
+                                >
+                                    <X className="w-5 h-5" />
                                 </button>
-                            </SignInButton>
-                        </SignedOut>
+
+                                <h3 className="text-2xl font-bold text-white mb-2 tracking-tight flex items-center gap-3">
+                                    <History className="w-6 h-6 text-indigo-400" /> Workflow History
+                                </h3>
+                                <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
+                                    Load previously deployed neural architectures.
+                                </p>
+
+                                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                                    {history.length === 0 ? (
+                                        <div className="text-center py-10 text-zinc-600 font-mono text-xs">
+                                            NO ARCHIVES FOUND
+                                        </div>
+                                    ) : (
+                                        history.map((flow) => (
+                                            <div
+                                                key={flow.id}
+                                                onClick={() => loadWorkflow(flow.id)}
+                                                className="group bg-white/[0.03] border border-white/5 p-4 rounded-2xl hover:border-indigo-500/30 transition-all cursor-pointer flex items-center justify-between"
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20 group-hover:bg-indigo-500/20">
+                                                        <FolderOpen className="w-5 h-5 text-indigo-400" />
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="text-zinc-200 font-bold text-sm group-hover:text-white transition-colors">{flow.name}</h4>
+                                                        <p className="text-[10px] text-zinc-600 font-mono">{new Date(flow.created_at).toLocaleDateString()}</p>
+                                                    </div>
+                                                </div>
+                                                <ChevronRight className="w-4 h-4 text-zinc-700 group-hover:text-white transition-all transform group-hover:translate-x-1" />
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                <GistlyVoiceAssistant />
+
+                {/* Mobile Bottom Navigation App Bar */}
+                <div className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-[#09090b]/80 backdrop-blur-2xl border-t border-white/10 z-[100] pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+                    <div className="flex items-center justify-around h-full px-2">
+                        <button
+                            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                            className={cn("flex flex-col items-center justify-center w-16 h-full gap-1 transition-colors", isMobileMenuOpen ? "text-indigo-400" : "text-zinc-500 hover:text-zinc-300")}
+                        >
+                            <LayoutDashboard className="w-6 h-6" />
+                            <span className="text-[10px] font-bold tracking-wider">Tools</span>
+                        </button>
+
+                        <button onClick={fetchHistory} className="flex flex-col items-center justify-center w-16 h-full gap-1 text-zinc-500 hover:text-indigo-400 transition-colors">
+                            <History className="w-6 h-6" />
+                            <span className="text-[10px] font-bold tracking-wider">History</span>
+                        </button>
+
+                        {/* Floating FAB - Center Clear Canvas Action */}
+                        <div className="relative -top-6 flex flex-col items-center">
+                            <button
+                                onClick={clearCanvas}
+                                style={{ WebkitTapHighlightColor: 'transparent' }}
+                                className="w-14 h-14 bg-gradient-to-tr from-indigo-600 to-cyan-500 rounded-full flex items-center justify-center shadow-[0_10px_30px_rgba(99,102,241,0.5)] border-2 border-[#09090b] text-white active:scale-95 transition-all outline-none"
+                            >
+                                <FilePlus className="w-6 h-6 drop-shadow-md" />
+                            </button>
+                        </div>
+
+                        <button onClick={() => setIsNewsOpen(true)} className="flex flex-col items-center justify-center w-16 h-full gap-1 text-zinc-500 hover:text-red-400 transition-colors">
+                            <Radio className="w-6 h-6 animate-pulse text-red-500" />
+                            <span className="text-[10px] font-bold tracking-wider">News</span>
+                        </button>
+
+                        <div className="flex flex-col items-center justify-center w-16 h-full gap-1">
+                            <SignedIn>
+                                <UserButton appearance={{ elements: { userButtonAvatarBox: "w-7 h-7 border-2 border-[#09090b] shadow-md" } }} />
+                            </SignedIn>
+                            <SignedOut>
+                                <SignInButton mode="modal">
+                                    <button className="text-zinc-500 flex flex-col items-center gap-1 hover:text-zinc-300">
+                                        <UserCheck className="w-6 h-6" />
+                                        <span className="text-[10px] font-bold tracking-wider">Sign In</span>
+                                    </button>
+                                </SignInButton>
+                            </SignedOut>
+                        </div>
                     </div>
                 </div>
+
             </div>
 
-        </div>
+            <NewsPanel isOpen={isNewsOpen} onClose={() => setIsNewsOpen(false)} />
+        </>
     );
 }

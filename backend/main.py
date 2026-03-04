@@ -18,8 +18,10 @@ from gtts import gTTS
 import tempfile
 from dotenv import load_dotenv
 from typing import Any, List
+import feedparser
 
 # Load environment variables
+from dotenv import load_dotenv
 load_dotenv()
 
 from supabase import create_client, Client
@@ -661,6 +663,66 @@ async def analyze_image(req: AIRequest):
     result = await generate_ai_response(prompt)
     return {"result": result}
 
+
+@app.get("/api/news")
+async def get_news_feed():
+    try:
+        # Using Google News RSS for Top Stories globally or technology.
+        # We can mix general news or tech. Let's use general world news for now.
+        url = "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en"
+        feed = feedparser.parse(url)
+        
+        articles = []
+        for entry in feed.entries[:20]: # Get top 20 news
+            # Some feeds put image in media_content, but google news doesn't usually.
+            # We will just pass title, link, published.
+            articles.append({
+                "title": entry.title,
+                "link": entry.link,
+                "published": entry.get('published', ''),
+                "source": entry.get('source', {}).get('title', 'News Source')
+            })
+            
+        return {"articles": articles}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch news stream: {str(e)}")
+
+@app.post("/api/news/summarize")
+async def news_summarize(req: AIRequest):
+    try:
+        url = req.content.strip()
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept": "text/html"
+        }
+        # Follow redirects in case of Google News proxy links
+        response = requests.get(url, headers=headers, timeout=15, allow_redirects=True)
+        response.raise_for_status()
+
+        soup = BeautifulSoup(response.content, "html.parser")
+
+        # Basic Article Extraction (trying common tags)
+        texts = soup.find_all(["p", "h1", "h2", "article", "section"])
+        content = " ".join([t.get_text() for t in texts])
+        
+        # Fallback if too short
+        if len(content) < 200:
+             content = req.context # If frontend passed some context like the title
+
+        prompt = (
+            f"You are an expert Social Media AI for 'Gistly.site'. Summarize the following news article into a highly engaging, viral, and easy-to-read social media post format.\n"
+            f"Requirements:\n"
+            f"- Add an attention-grabbing headline (with emojis).\n"
+            f"- Break down the key facts into 3-4 bullet points.\n"
+            f"- Add 3-5 relevant trending #hashtags at the bottom.\n"
+            f"- End the post specifically with: '💡 Summarized via Gistly.site'\n\n"
+            f"News Content to summarize:\n{content[:50000]}"
+        )
+        
+        result = await generate_ai_response(prompt)
+        return {"result": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to process news link: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
