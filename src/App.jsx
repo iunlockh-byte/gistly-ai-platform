@@ -15,6 +15,7 @@ import { twMerge } from 'tailwind-merge';
 import { SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Sphere, MeshDistortMaterial } from '@react-three/drei';
+import Marquee from 'react-fast-marquee';
 import NewsPanel from './NewsPanel';
 
 function cn(...inputs) {
@@ -1407,61 +1408,83 @@ export default function App() {
                                 </button>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 relative z-10">
-                                    <div className="p-8 md:p-10 border-r border-white/5 bg-white/[0.02] flex flex-col justify-between">
+                                    <div className="p-8 md:p-10 border-b md:border-b-0 md:border-r border-white/5 bg-white/[0.02] flex flex-col justify-between">
                                         <div>
                                             <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mb-6">
                                                 <Fingerprint className="w-6 h-6 text-cyan-400" />
                                             </div>
-                                            <h3 className="text-4xl font-black text-white tracking-tighter font-display leading-none mb-4">
-                                                The <br />Architecture <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400">Of Mind.</span>
+                                            <h3 className="text-4xl font-black text-white tracking-tighter font-display leading-tight mb-4">
+                                                The World's 1st <br />
+                                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-indigo-400 to-purple-400">Multitasking AI Hub.</span>
                                             </h3>
                                             <p className="text-zinc-400 text-sm leading-relaxed mb-6 border-l-2 border-cyan-500/30 pl-4 py-1 italic">
-                                                "We do not just build software. We construct digital cognition tailored to elevate human potential."
+                                                "Not just another chatbot. We engineered the ultimate unified workspace for modern intelligence automation."
                                             </p>
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="bg-black/40 rounded-xl p-4 border border-white/5">
-                                                <div className="text-2xl font-bold text-white mb-1">99.9%</div>
-                                                <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Uptime Synergy</div>
+                                        <div className="mt-8">
+                                            <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-3 flex items-center gap-2">
+                                                <Zap className="w-3 h-3 text-cyan-500" /> Powered by Tier-1 Engines
                                             </div>
-                                            <div className="bg-black/40 rounded-xl p-4 border border-white/5">
-                                                <div className="text-2xl font-bold text-white mb-1">&lt;15ms</div>
-                                                <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Neural Latency</div>
+                                            <div className="bg-black/40 rounded-xl border border-white/5 overflow-hidden py-3">
+                                                <Marquee gradient={true} gradientColor="[0,0,0]" gradientWidth={40} speed={40}>
+                                                    <div className="flex items-center gap-8 px-4 text-xs font-bold text-zinc-300 tracking-widest uppercase">
+                                                        <span className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-blue-400" /> Google Gemini</span>
+                                                        <span className="flex items-center gap-2"><ImageIcon className="w-4 h-4 text-pink-400" /> Leonardo.Ai</span>
+                                                        <span className="flex items-center gap-2"><Globe className="w-4 h-4 text-emerald-400" /> Apify</span>
+                                                        <span className="flex items-center gap-2"><Cpu className="w-4 h-4 text-orange-400" /> Groq Llama 3</span>
+                                                        <span className="flex items-center gap-2"><Database className="w-4 h-4 text-emerald-500" /> Supabase</span>
+                                                        <span className="flex items-center gap-2"><Code className="w-4 h-4 text-cyan-400" /> React Core</span>
+                                                    </div>
+                                                </Marquee>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="p-8 md:p-10">
-                                        <h4 className="text-sm font-bold text-white mb-4 uppercase tracking-widest flex items-center gap-2">
-                                            <Zap className="w-4 h-4 text-cyan-400" /> Genesis Protocol
+                                    <div className="p-8 md:p-10 flex flex-col justify-center">
+                                        <h4 className="text-sm font-bold text-white mb-6 uppercase tracking-widest flex items-center gap-2">
+                                            <Orbit className="w-4 h-4 text-indigo-400" /> The Gistly Ecosystem
                                         </h4>
 
                                         <div className="space-y-6 text-sm text-zinc-300 leading-relaxed">
                                             <p>
-                                                <strong className="text-white">Gistly.ai</strong> was forged from a singular directive: to make enterprise-grade artificial intelligence accessible, rapid, and flawlessly integrated into daily workflows.
-                                            </p>
-                                            <p>
-                                                We operate on the bleeding edge of the <span className="text-cyan-400 font-mono">Large Language Frontier</span>. Rather than simple text inputs, we built the world's first true intelligence workstation pipeline.
+                                                <strong className="text-white">Gistly.site</strong> merges the distinct powers of the world's most capable AI networks into a single, seamless infinite canvas.
                                             </p>
 
-                                            <div className="pt-4 mt-4 border-t border-white/10">
-                                                <h5 className="font-bold text-zinc-100 mb-3 text-xs uppercase tracking-widest opacity-60">Our Core Directives</h5>
-                                                <ul className="space-y-3">
-                                                    <li className="flex items-start gap-3">
-                                                        <div className="w-1.5 h-1.5 mt-2 rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]"></div>
-                                                        <span className="text-zinc-400"><strong className="text-zinc-200">Velocity:</strong> Idea to execution in milliseconds.</span>
-                                                    </li>
-                                                    <li className="flex items-start gap-3">
-                                                        <div className="w-1.5 h-1.5 mt-2 rounded-full bg-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.8)]"></div>
-                                                        <span className="text-zinc-400"><strong className="text-zinc-200">Integrity:</strong> Uncompromising data privacy and ethical model constraints.</span>
-                                                    </li>
-                                                    <li className="flex items-start gap-3">
-                                                        <div className="w-1.5 h-1.5 mt-2 rounded-full bg-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.8)]"></div>
-                                                        <span className="text-zinc-400"><strong className="text-zinc-200">Elegance:</strong> Interfaces that feel like extensions of thought.</span>
-                                                    </li>
-                                                </ul>
+                                            <div className="grid grid-cols-2 gap-4 mt-6">
+                                                <div className="bg-white/[0.02] border border-white/5 p-4 rounded-2xl hover:border-cyan-500/30 transition-all">
+                                                    <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center mb-3">
+                                                        <Sparkles className="w-4 h-4 text-blue-400" />
+                                                    </div>
+                                                    <h5 className="text-xs font-bold text-white uppercase tracking-wider mb-1">Deep Logic</h5>
+                                                    <p className="text-[10px] text-zinc-500">Powered by Gemini for reasoning & code.</p>
+                                                </div>
+                                                <div className="bg-white/[0.02] border border-white/5 p-4 rounded-2xl hover:border-pink-500/30 transition-all">
+                                                    <div className="w-8 h-8 rounded-full bg-pink-500/10 flex items-center justify-center mb-3">
+                                                        <ImageIcon className="w-4 h-4 text-pink-400" />
+                                                    </div>
+                                                    <h5 className="text-xs font-bold text-white uppercase tracking-wider mb-1">Visual Arts</h5>
+                                                    <p className="text-[10px] text-zinc-500">Leonardo.ai engine for hyper-real rendering.</p>
+                                                </div>
+                                                <div className="bg-white/[0.02] border border-white/5 p-4 rounded-2xl hover:border-emerald-500/30 transition-all">
+                                                    <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center mb-3">
+                                                        <Globe className="w-4 h-4 text-emerald-400" />
+                                                    </div>
+                                                    <h5 className="text-xs font-bold text-white uppercase tracking-wider mb-1">Live Web Intel</h5>
+                                                    <p className="text-[10px] text-zinc-500">Real-time data scraping driven by Apify.</p>
+                                                </div>
+                                                <div className="bg-white/[0.02] border border-white/5 p-4 rounded-2xl hover:border-orange-500/30 transition-all">
+                                                    <div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center mb-3">
+                                                        <Zap className="w-4 h-4 text-orange-400" />
+                                                    </div>
+                                                    <h5 className="text-xs font-bold text-white uppercase tracking-wider mb-1">Instant Speed</h5>
+                                                    <p className="text-[10px] text-zinc-500">Groq hardware inferencing for 0-latency chat.</p>
+                                                </div>
                                             </div>
+
+                                            <p className="text-xs text-zinc-500 mt-6 border-l-2 border-indigo-500/30 pl-3">
+                                                Why switch between 5 tabs when you can architect the future from one terminal? Welcome to the Nexus.
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
