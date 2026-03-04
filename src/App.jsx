@@ -1430,11 +1430,12 @@ export default function App() {
                                                 <Marquee gradient={true} gradientColor="[0,0,0]" gradientWidth={40} speed={40}>
                                                     <div className="flex items-center gap-8 px-4 text-xs font-bold text-zinc-300 tracking-widest uppercase">
                                                         <span className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-blue-400" /> Google Gemini</span>
+                                                        <span className="flex items-center gap-2"><Terminal className="w-4 h-4 text-purple-600" /> Antigravity Core</span>
                                                         <span className="flex items-center gap-2"><ImageIcon className="w-4 h-4 text-pink-400" /> Leonardo.Ai</span>
                                                         <span className="flex items-center gap-2"><Globe className="w-4 h-4 text-emerald-400" /> Apify</span>
                                                         <span className="flex items-center gap-2"><Cpu className="w-4 h-4 text-orange-400" /> Groq Llama 3</span>
                                                         <span className="flex items-center gap-2"><Database className="w-4 h-4 text-emerald-500" /> Supabase</span>
-                                                        <span className="flex items-center gap-2"><Code className="w-4 h-4 text-cyan-400" /> React Core</span>
+                                                        <span className="flex items-center gap-2"><Code className="w-4 h-4 text-cyan-400" /> React Ecosystem</span>
                                                     </div>
                                                 </Marquee>
                                             </div>
@@ -1452,19 +1453,28 @@ export default function App() {
                                             </p>
 
                                             <div className="grid grid-cols-2 gap-4 mt-6">
+                                                <div className="bg-white/[0.02] border border-white/5 p-4 rounded-2xl hover:border-purple-500/30 transition-all col-span-2 shadow-[0_0_15px_rgba(168,85,247,0.05)]">
+                                                    <div className="flex items-center gap-3 mb-2">
+                                                        <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center">
+                                                            <Terminal className="w-4 h-4 text-purple-400" />
+                                                        </div>
+                                                        <h5 className="text-xs font-bold text-white uppercase tracking-wider">Antigravity Intelligence</h5>
+                                                    </div>
+                                                    <p className="text-[10px] text-zinc-400 mt-2">The core agentic AI software engineer. Built the entire platform infrastructure, algorithms, and 100% of the codebase autonomously.</p>
+                                                </div>
                                                 <div className="bg-white/[0.02] border border-white/5 p-4 rounded-2xl hover:border-cyan-500/30 transition-all">
                                                     <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center mb-3">
                                                         <Sparkles className="w-4 h-4 text-blue-400" />
                                                     </div>
                                                     <h5 className="text-xs font-bold text-white uppercase tracking-wider mb-1">Deep Logic</h5>
-                                                    <p className="text-[10px] text-zinc-500">Powered by Gemini for reasoning & code.</p>
+                                                    <p className="text-[10px] text-zinc-500">Powered by Gemini for advanced reasoning.</p>
                                                 </div>
                                                 <div className="bg-white/[0.02] border border-white/5 p-4 rounded-2xl hover:border-pink-500/30 transition-all">
                                                     <div className="w-8 h-8 rounded-full bg-pink-500/10 flex items-center justify-center mb-3">
                                                         <ImageIcon className="w-4 h-4 text-pink-400" />
                                                     </div>
                                                     <h5 className="text-xs font-bold text-white uppercase tracking-wider mb-1">Visual Arts</h5>
-                                                    <p className="text-[10px] text-zinc-500">Leonardo.ai engine for hyper-real rendering.</p>
+                                                    <p className="text-[10px] text-zinc-500">Leonardo engine for hyper-real generation.</p>
                                                 </div>
                                                 <div className="bg-white/[0.02] border border-white/5 p-4 rounded-2xl hover:border-emerald-500/30 transition-all">
                                                     <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center mb-3">
@@ -1478,7 +1488,7 @@ export default function App() {
                                                         <Zap className="w-4 h-4 text-orange-400" />
                                                     </div>
                                                     <h5 className="text-xs font-bold text-white uppercase tracking-wider mb-1">Instant Speed</h5>
-                                                    <p className="text-[10px] text-zinc-500">Groq hardware inferencing for 0-latency chat.</p>
+                                                    <p className="text-[10px] text-zinc-500">Groq LPUs for zero-latency communication.</p>
                                                 </div>
                                             </div>
 
