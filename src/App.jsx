@@ -902,6 +902,37 @@ export default function App() {
     // Modal states
     const [isGuideOpen, setIsGuideOpen] = useState(false);
     const [isContactOpen, setIsContactOpen] = useState(false);
+
+    // Contact Form State
+    const [contactName, setContactName] = useState('');
+    const [contactEmail, setContactEmail] = useState('');
+    const [contactMessage, setContactMessage] = useState('');
+    const [isSendingContact, setIsSendingContact] = useState(false);
+    const [contactStatus, setContactStatus] = useState(null);
+
+    const handleContactSubmit = async (e) => {
+        e.preventDefault();
+        setIsSendingContact(true);
+        setContactStatus(null);
+        try {
+            await axios.post(`${API_BASE_URL}/api/contact`, {
+                name: contactName,
+                email: contactEmail,
+                message: contactMessage
+            });
+            setContactStatus({ type: 'success', text: 'Transmission Successful.' });
+            setContactName('');
+            setContactEmail('');
+            setContactMessage('');
+            setTimeout(() => setContactStatus(null), 5000);
+        } catch (error) {
+            console.error("Contact Form Error:", error);
+            setContactStatus({ type: 'error', text: 'Transmission Failed. Try again.' });
+        } finally {
+            setIsSendingContact(false);
+        }
+    };
+
     const [isAboutOpen, setIsAboutOpen] = useState(false);
     const [isPricingOpen, setIsPricingOpen] = useState(false);
     const [isNewsOpen, setIsNewsOpen] = useState(false);
@@ -1336,13 +1367,44 @@ export default function App() {
                                                 <Mail className="w-6 h-6 text-indigo-300" />
                                             </div>
                                             <div>
-                                                <p className="text-xs text-zinc-500 uppercase font-bold tracking-widest mb-1">Primary Transmission Endpoint</p>
+                                                <p className="text-xs text-zinc-500 uppercase font-bold tracking-widest mb-1">Direct Email (Manual)</p>
                                                 <a href="mailto:contact@gistly.site" className="text-xl font-mono text-white hover:text-indigo-400 transition-colors font-bold tracking-tighter">
                                                     contact<span className="text-indigo-400">@</span>gistly.site
                                                 </a>
                                             </div>
                                         </div>
                                     </div>
+
+                                    <form onSubmit={handleContactSubmit} className="mb-8 space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-2 block">Agent Name</label>
+                                                <input required value={contactName} onChange={(e) => setContactName(e.target.value)} type="text" placeholder="John Doe" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-2 block">Return Address</label>
+                                                <input required value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} type="email" placeholder="john@example.com" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-2 block">Encrypted Payload</label>
+                                            <textarea required value={contactMessage} onChange={(e) => setContactMessage(e.target.value)} rows={3} placeholder="How can we assist you?" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-sans resize-none"></textarea>
+                                        </div>
+
+                                        <div className="flex items-center justify-between mt-2">
+                                            <div className="flex-1">
+                                                {contactStatus && (
+                                                    <div className={cn("text-xs font-mono py-1.5 px-3 rounded-lg inline-block border", contactStatus.type === 'success' ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-red-500/10 text-red-500 border-red-500/20")}>
+                                                        {contactStatus.text}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <button disabled={isSendingContact} type="submit" className="px-6 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold uppercase tracking-widest rounded-xl transition-all shadow-[0_0_20px_rgba(99,102,241,0.4)] disabled:opacity-50 flex items-center gap-2">
+                                                {isSendingContact ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                                {isSendingContact ? 'Transmitting...' : 'Send Message'}
+                                            </button>
+                                        </div>
+                                    </form>
 
                                     <h4 className="text-sm font-bold text-white mb-4 uppercase tracking-widest flex items-center gap-2">
                                         <Database className="w-4 h-4 text-indigo-400" /> Frequently Queried Sectors (FAQ)
@@ -1372,9 +1434,9 @@ export default function App() {
                                     <div className="mt-8 flex justify-end">
                                         <button
                                             onClick={() => setIsContactOpen(false)}
-                                            className="px-6 py-2.5 bg-indigo-500/10 text-indigo-400 border border-indigo-500/50 text-sm font-bold uppercase tracking-widest rounded-xl hover:bg-indigo-500 hover:text-white transition-all shadow-[0_0_15px_rgba(99,102,241,0.2)]"
+                                            className="px-6 py-2.5 bg-zinc-800 text-zinc-300 border border-white/5 text-sm font-bold uppercase tracking-widest rounded-xl hover:bg-zinc-700 hover:text-white transition-all shadow-[0_0_15px_rgba(0,0,0,0.2)]"
                                         >
-                                            End Transmission
+                                            Close Uplink
                                         </button>
                                     </div>
                                 </div>

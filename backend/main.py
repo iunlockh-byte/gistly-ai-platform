@@ -20,6 +20,10 @@ from dotenv import load_dotenv
 from typing import Any, List
 import feedparser
 import yfinance as yf
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
 load_dotenv()
 
 from supabase import create_client, Client
@@ -891,6 +895,46 @@ async def analyze_market(req: AIRequest):
         return {"result": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Market analysis failed: {str(e)}")
+
+class ContactMessage(BaseModel):
+    name: str
+    email: str
+    message: str
+
+@app.post("/api/contact")
+async def send_contact_email(data: ContactMessage):
+    """
+    Handles messages from the site's Contact Us form.
+    Sends them using Zoho SMTP if configured, else prints to console.
+    """
+    smtp_user = os.getenv("ZOHO_EMAIL", "contact@gistly.site")
+    smtp_pass = os.getenv("ZOHO_APP_PASSWORD")
+    
+    if not smtp_pass:
+        print(f"\n--- 📩 INCOMING TRANSMISSION (SIMULATION MODE) ---")
+        print(f"From: {data.name} <{data.email}>")
+        print(f"Message:\n{data.message}")
+        print(f"--------------------------------------------------\n")
+        print(f"WARNING: ZOHO_APP_PASSWORD not set in .env. Message printed to console instead of emailing.")
+        return {"result": "Message received via local fallback. Set ZOHO_APP_PASSWORD in .env for live transmission."}
+    
+    msg = MIMEMultipart()
+    msg['From'] = smtp_user
+    msg['To'] = smtp_user
+    msg['Subject'] = f"Gistly Neural Uplink: Message from {data.name}"
+    
+    body = f"New incoming transmission to Gistly.site:\n\nUser Name: {data.name}\nUser Email: {data.email}\n\nMessage:\n{data.message}"
+    msg.attach(MIMEText(body, 'plain'))
+    
+    try:
+        server = smtplib.SMTP('smtp.zoho.com', 587)
+        server.starttls()
+        server.login(smtp_user, smtp_pass)
+        server.send_message(msg)
+        server.quit()
+        return {"result": "Message successfully transmitted to Gistly Nexus."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Transmission failed: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
