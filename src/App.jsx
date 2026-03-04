@@ -1265,52 +1265,54 @@ export default function App() {
                                 initial={{ opacity: 0, scale: 0.95, y: 10 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                                className="bg-[#111113]/70 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl max-w-xl w-full shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] relative overflow-hidden group"
+                                className="bg-[#111113]/70 backdrop-blur-2xl border border-white/10 rounded-3xl max-w-xl w-full shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] relative overflow-hidden group flex flex-col max-h-[90vh]"
                             >
                                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
                                 <button
                                     onClick={() => setIsGuideOpen(false)}
-                                    className="absolute top-6 right-6 text-zinc-500 hover:text-white transition-colors"
+                                    className="absolute top-6 right-6 text-zinc-500 hover:text-white transition-colors z-[100]"
                                 >
                                     <X className="w-5 h-5" />
                                 </button>
 
-                                <h3 className="text-2xl font-bold text-white mb-2 tracking-tight font-display">Infinite Canvas Guide</h3>
-                                <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
-                                    Welcome to the most advanced AI workstation.
-                                </p>
+                                <div className="p-8 relative z-10 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 w-full">
+                                    <h3 className="text-2xl font-bold text-white mb-2 tracking-tight font-display">Infinite Canvas Guide</h3>
+                                    <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
+                                        Welcome to the most advanced AI workstation.
+                                    </p>
 
-                                <div className="space-y-4">
-                                    <div className="flex items-start gap-3">
-                                        <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold mt-0.5 border border-indigo-500/30 shrink-0">1</div>
-                                        <div>
-                                            <h4 className="text-zinc-200 font-semibold text-sm">Deploy Nodes</h4>
-                                            <p className="text-zinc-500 text-xs mt-1 leading-relaxed">Click any tool on the left dashboard to spawn a floating neural node into your workspace.</p>
+                                    <div className="space-y-4">
+                                        <div className="flex items-start gap-3">
+                                            <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold mt-0.5 border border-indigo-500/30 shrink-0">1</div>
+                                            <div>
+                                                <h4 className="text-zinc-200 font-semibold text-sm">Deploy Nodes</h4>
+                                                <p className="text-zinc-500 text-xs mt-1 leading-relaxed">Click any tool on the left dashboard to spawn a floating neural node into your workspace.</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-start gap-3">
+                                            <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold mt-0.5 border border-indigo-500/30 shrink-0">2</div>
+                                            <div>
+                                                <h4 className="text-zinc-200 font-semibold text-sm">Arrange & Build</h4>
+                                                <p className="text-zinc-500 text-xs mt-1 leading-relaxed">Drag nodes anywhere on the screen. The central AI core will draw neural links to active processes automatically.</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-start gap-3">
+                                            <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold mt-0.5 border border-indigo-500/30 shrink-0">3</div>
+                                            <div>
+                                                <h4 className="text-zinc-200 font-semibold text-sm">Execute in Parallel</h4>
+                                                <p className="text-zinc-500 text-xs mt-1 leading-relaxed">Run multiple tools at the exact same time. The core handles concurrent processing flawlessly.</p>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-start gap-3">
-                                        <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold mt-0.5 border border-indigo-500/30 shrink-0">2</div>
-                                        <div>
-                                            <h4 className="text-zinc-200 font-semibold text-sm">Arrange & Build</h4>
-                                            <p className="text-zinc-500 text-xs mt-1 leading-relaxed">Drag nodes anywhere on the screen. The central AI core will draw neural links to active processes automatically.</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-start gap-3">
-                                        <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold mt-0.5 border border-indigo-500/30 shrink-0">3</div>
-                                        <div>
-                                            <h4 className="text-zinc-200 font-semibold text-sm">Execute in Parallel</h4>
-                                            <p className="text-zinc-500 text-xs mt-1 leading-relaxed">Run multiple tools at the exact same time. The core handles concurrent processing flawlessly.</p>
-                                        </div>
-                                    </div>
-                                </div>
 
-                                <div className="mt-8 pt-6 border-t border-white/5 flex justify-end">
-                                    <button
-                                        onClick={() => setIsGuideOpen(false)}
-                                        className="px-5 py-2 bg-white text-black text-sm font-bold rounded-xl hover:bg-zinc-200 transition-all active:scale-[0.98]"
-                                    >
-                                        Initialize System
-                                    </button>
+                                    <div className="mt-8 pt-6 border-t border-white/5 flex justify-end">
+                                        <button
+                                            onClick={() => setIsGuideOpen(false)}
+                                            className="px-5 py-2 bg-white text-black text-sm font-bold rounded-xl hover:bg-zinc-200 transition-all active:scale-[0.98]"
+                                        >
+                                            Initialize System
+                                        </button>
+                                    </div>
                                 </div>
                             </motion.div>
                         </motion.div>
@@ -1332,18 +1334,18 @@ export default function App() {
                                 initial={{ opacity: 0, scale: 0.95, y: 10 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                                className="bg-[#0c0c0e]/90 border border-indigo-500/20 p-0 rounded-3xl max-w-2xl w-full shadow-[0_0_50px_rgba(99,102,241,0.1)] relative overflow-hidden"
+                                className="bg-[#0c0c0e]/90 border border-indigo-500/20 p-0 rounded-3xl max-w-2xl w-full shadow-[0_0_50px_rgba(99,102,241,0.1)] relative overflow-hidden flex flex-col max-h-[90vh]"
                             >
-                                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-indigo-500 to-purple-500"></div>
+                                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-indigo-500 to-purple-500 z-50"></div>
 
                                 <button
                                     onClick={() => setIsContactOpen(false)}
-                                    className="absolute top-6 right-6 text-zinc-500 hover:text-indigo-400 transition-colors z-10"
+                                    className="absolute top-6 right-6 text-zinc-500 hover:text-indigo-400 transition-colors z-[100] bg-black/50 p-2 rounded-full backdrop-blur-md"
                                 >
                                     <X className="w-5 h-5" />
                                 </button>
 
-                                <div className="p-8 md:p-10 relative z-10">
+                                <div className="p-8 md:p-10 relative z-10 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 w-full">
                                     <div className="flex items-center gap-4 mb-2">
                                         <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
                                             <Orbit className="w-6 h-6 text-indigo-400 animate-[spin_10s_linear_infinite]" />
@@ -1458,18 +1460,18 @@ export default function App() {
                                 initial={{ opacity: 0, scale: 0.95, y: -20 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                                className="bg-[#09090b] border border-cyan-500/20 p-0 rounded-3xl max-w-3xl w-full shadow-[0_0_80px_rgba(34,211,238,0.05)] relative overflow-hidden"
+                                className="bg-[#09090b] border border-cyan-500/20 p-0 rounded-3xl max-w-3xl w-full shadow-[0_0_80px_rgba(34,211,238,0.05)] relative overflow-hidden flex flex-col max-h-[90vh]"
                             >
                                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
 
                                 <button
                                     onClick={() => setIsAboutOpen(false)}
-                                    className="absolute top-6 right-6 text-zinc-500 hover:text-cyan-400 transition-colors z-50 bg-black/50 p-2 rounded-full backdrop-blur-md"
+                                    className="absolute top-6 right-6 text-zinc-500 hover:text-cyan-400 transition-colors z-[100] bg-black/50 p-2 rounded-full backdrop-blur-md"
                                 >
                                     <X className="w-5 h-5" />
                                 </button>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 relative z-10">
+                                <div className="grid grid-cols-1 md:grid-cols-2 relative z-10 overflow-y-auto scrollbar-thin scrollbar-thumb-cyan-500/20 w-full flex-1">
                                     <div className="p-8 md:p-10 border-b md:border-b-0 md:border-r border-white/5 bg-white/[0.02] flex flex-col justify-between">
                                         <div>
                                             <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mb-6">
