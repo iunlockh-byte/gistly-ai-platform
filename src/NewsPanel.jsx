@@ -368,9 +368,9 @@ export default function NewsPanel({ isOpen, onClose }) {
                             initial={{ scale: 0.9, y: 20 }}
                             animate={{ scale: 1, y: 0 }}
                             exit={{ scale: 0.9, y: 20 }}
-                            className="w-full max-w-lg bg-[#0c0c0e] border border-indigo-500/20 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(99,102,241,0.1)] relative"
+                            className="w-full max-w-lg bg-[#0c0c0e] border border-indigo-500/20 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(99,102,241,0.1)] relative flex flex-col max-h-[90vh]"
                         >
-                            <div className="p-4 bg-indigo-500/10 border-b border-indigo-500/20 flex items-center justify-between">
+                            <div className="p-4 bg-indigo-500/10 border-b border-indigo-500/20 flex items-center justify-between shrink-0">
                                 <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-widest flex items-center gap-2">
                                     <Sparkles className="w-4 h-4" /> AI News Generator
                                 </h3>
@@ -378,7 +378,7 @@ export default function NewsPanel({ isOpen, onClose }) {
                                     <X className="w-5 h-5" />
                                 </button>
                             </div>
-                            <div className="p-6">
+                            <div className="p-6 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
                                 <p className="text-xs text-zinc-500 mb-4 border-l-2 border-indigo-500/30 pl-3">
                                     {activeArticle.title}
                                 </p>
@@ -429,9 +429,9 @@ export default function NewsPanel({ isOpen, onClose }) {
                             initial={{ scale: 0.9, y: 20 }}
                             animate={{ scale: 1, y: 0 }}
                             exit={{ scale: 0.9, y: 20 }}
-                            className="w-full max-w-lg bg-[#0c0c0e] border border-emerald-500/20 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(16,185,129,0.1)] relative"
+                            className="w-full max-w-lg bg-[#0c0c0e] border border-emerald-500/20 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(16,185,129,0.1)] relative flex flex-col max-h-[90vh]"
                         >
-                            <div className="p-4 bg-emerald-500/10 border-b border-emerald-500/20 flex items-center justify-between">
+                            <div className="p-4 bg-emerald-500/10 border-b border-emerald-500/20 flex items-center justify-between shrink-0">
                                 <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-2">
                                     <Zap className="w-4 h-4" /> AI Match Predictor (Beta)
                                 </h3>
@@ -439,7 +439,7 @@ export default function NewsPanel({ isOpen, onClose }) {
                                     <X className="w-5 h-5" />
                                 </button>
                             </div>
-                            <div className="p-6">
+                            <div className="p-6 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
                                 <div className="flex justify-between items-center mb-6">
                                     <div className="text-center w-[40%]">
                                         <p className="text-lg font-black text-white">{activeMatch.team1}</p>
@@ -492,9 +492,9 @@ export default function NewsPanel({ isOpen, onClose }) {
                             initial={{ scale: 0.9, y: 20 }}
                             animate={{ scale: 1, y: 0 }}
                             exit={{ scale: 0.9, y: 20 }}
-                            className="w-full max-w-lg bg-[#0c0c0e] border border-purple-500/20 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(168,85,247,0.1)] relative"
+                            className="w-full max-w-lg bg-[#0c0c0e] border border-purple-500/20 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(168,85,247,0.1)] relative flex flex-col max-h-[90vh]"
                         >
-                            <div className="p-4 bg-purple-500/10 border-b border-purple-500/20 flex items-center justify-between">
+                            <div className="p-4 bg-purple-500/10 border-b border-purple-500/20 flex items-center justify-between shrink-0">
                                 <h3 className="text-xs font-bold text-purple-400 uppercase tracking-widest flex items-center gap-2">
                                     <Activity className="w-4 h-4" /> AI Investment Analyst
                                 </h3>
@@ -502,7 +502,7 @@ export default function NewsPanel({ isOpen, onClose }) {
                                     <X className="w-5 h-5" />
                                 </button>
                             </div>
-                            <div className="p-6">
+                            <div className="p-6 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
                                 <div className="flex justify-between items-center mb-6 border-b border-white/5 pb-4">
                                     <div>
                                         <p className="text-xl font-black text-white">{activeMarket.symbol}</p>
