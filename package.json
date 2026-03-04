@@ -16,6 +16,7 @@
     "@clerk/clerk-react": "^5.61.1",
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.15.12",
+    "@stripe/stripe-js": "^8.9.0",
     "axios": "^1.13.5",
     "clsx": "^2.1.1",
     "framer-motion": "^11.18.2",

@@ -17,12 +17,12 @@ from bs4 import BeautifulSoup
 from gtts import gTTS
 import tempfile
 from dotenv import load_dotenv
-from typing import Any, List
 import feedparser
 import yfinance as yf
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import stripe
 
 load_dotenv()
 
@@ -62,6 +62,16 @@ if not HF_TOKEN:
 
 # Initialize clients
 genai.configure(api_key=API_KEY)
+
+# Configure Stripe
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
+if STRIPE_SECRET_KEY:
+    stripe.api_key = STRIPE_SECRET_KEY
+else:
+    print("WARNING: STRIPE_SECRET_KEY not found. Payments disabled.")
+    
+# Gistly URL for Stripe Redirects (use localhost for dev, or the env variable if deployed)
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 model = genai.GenerativeModel("gemini-flash-latest")
 apify_client = ApifyClient(APIFY_TOKEN) if APIFY_TOKEN else None
 groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
@@ -935,6 +945,29 @@ async def send_contact_email(data: ContactMessage):
         return {"result": "Message successfully transmitted to Gistly Nexus."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Transmission failed: {str(e)}")
+
+class CheckoutRequest(BaseModel):
+    price_id: str
+
+@app.post("/api/create-checkout-session")
+async def create_checkout_session(request: CheckoutRequest):
+    if not STRIPE_SECRET_KEY:
+        raise HTTPException(status_code=500, detail="Stripe payments are not configured on this server.")
+        
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[{
+                'price': request.price_id,
+                'quantity': 1,
+            }],
+            mode='subscription',
+            success_url=f"{FRONTEND_URL}/?payment=success",
+            cancel_url=f"{FRONTEND_URL}/?payment=cancelled",
+        )
+        return {"url": session.url}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

@@ -591,6 +591,7 @@ const PricingModal = ({ isOpen, onClose }) => {
             name: "Pro Architect",
             price: "$19",
             period: "/mo",
+            price_id: "price_pro", // Replace with real Stripe Price ID
             desc: "The professional standard",
             features: ["Unlimited Neural Ops", "Priority GPU Access", "Gistly Voice AI", "Advanced Debugger", "Early Beta Access"],
             button: "Upgrade to Pro",
@@ -602,6 +603,7 @@ const PricingModal = ({ isOpen, onClose }) => {
             name: "Neural Agency",
             price: "$99",
             period: "/mo",
+            price_id: "price_agency", // Replace with real Stripe Price ID
             desc: "Scale your intelligence",
             features: ["Everything in Pro", "API Developer Key", "Custom Model Tuning", "Dedicated Data Line", "SLA Guarantee"],
             button: "Contact Sales",
@@ -609,6 +611,23 @@ const PricingModal = ({ isOpen, onClose }) => {
             textColor: "text-white"
         }
     ];
+
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleCheckout = async (priceId) => {
+        setIsLoading(true);
+        try {
+            const response = await axios.post(`${API_BASE_URL}/api/create-checkout-session`, {
+                price_id: priceId
+            });
+            window.location.href = response.data.url;
+        } catch (error) {
+            console.error("Stripe Checkout Error:", error);
+            alert("Failed to initialize payment gateway. Please make sure Stripe keys are setup in the backend.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     return (
         <AnimatePresence>
@@ -674,23 +693,26 @@ const PricingModal = ({ isOpen, onClose }) => {
                                             </div>
                                         ))}
                                     </div>
-
                                     <button
+                                        disabled={isLoading}
                                         onClick={() => {
                                             if (plan.price === "$0") {
                                                 onClose();
+                                            } else if (plan.price === "$99") {
+                                                alert("Enterprise contact initiated. Check Neural Uplink.");
                                             } else {
-                                                alert("Stripe Integration Initializing... Redirecting to Secure Gateway.");
+                                                handleCheckout(plan.price_id);
                                             }
                                         }}
                                         className={cn(
-                                            "w-full py-4 rounded-2xl font-bold text-sm transition-all active:scale-95",
+                                            "w-full py-4 mt-auto rounded-2xl font-bold text-sm transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2",
                                             plan.popular
                                                 ? "bg-indigo-500 text-white hover:bg-indigo-400 shadow-indigo-500/25"
                                                 : "bg-white/5 text-zinc-300 hover:bg-white/10"
                                         )}
                                     >
-                                        {plan.button}
+                                        {isLoading && plan.price === "$19" ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                                        {isLoading && plan.price === "$19" ? "Connecting..." : plan.button}
                                     </button>
                                 </motion.div>
                             ))}
