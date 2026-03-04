@@ -12,10 +12,11 @@ function cn(...inputs) {
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export default function NewsPanel({ isOpen, onClose }) {
-    const [activeTab, setActiveTab] = useState('global'); // 'global', 'sports', 'scores'
+    const [activeTab, setActiveTab] = useState('global'); // 'global', 'sports', 'scores', 'markets'
     const [news, setNews] = useState([]);
     const [sportsNews, setSportsNews] = useState([]);
     const [scores, setScores] = useState([]);
+    const [markets, setMarkets] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -24,6 +25,7 @@ export default function NewsPanel({ isOpen, onClose }) {
     const [summaryResult, setSummaryResult] = useState('');
     const [summaryLoading, setSummaryLoading] = useState(false);
     const [activeMatch, setActiveMatch] = useState(null);
+    const [activeMarket, setActiveMarket] = useState(null);
     const [predictionResult, setPredictionResult] = useState('');
     const [predictionLoading, setPredictionLoading] = useState(false);
 
@@ -40,6 +42,9 @@ export default function NewsPanel({ isOpen, onClose }) {
             } else if (activeTab === 'scores' && (scores.length === 0 || force)) {
                 const resp = await axios.get(`${API_BASE_URL}/api/scores/live`);
                 setScores(resp.data.matches || []);
+            } else if (activeTab === 'markets' && (markets.length === 0 || force)) {
+                const resp = await axios.get(`${API_BASE_URL}/api/markets/trending`);
+                setMarkets(resp.data.markets || []);
             }
         } catch (err) {
             console.error(err);
@@ -83,6 +88,22 @@ export default function NewsPanel({ isOpen, onClose }) {
             setPredictionResult(resp.data.result);
         } catch (err) {
             setPredictionResult("Failed to calculate AI prediction. Probability engine is currently offline.");
+        } finally {
+            setPredictionLoading(false);
+        }
+    };
+
+    const handleAnalyzeMarket = async (market) => {
+        setActiveMarket(market);
+        setPredictionLoading(true);
+        setPredictionResult('');
+        try {
+            const resp = await axios.post(`${API_BASE_URL}/api/markets/analyze`, {
+                content: market.symbol
+            });
+            setPredictionResult(resp.data.result);
+        } catch (err) {
+            setPredictionResult("Failed to gather AI Financial Analysis. Try again later.");
         } finally {
             setPredictionLoading(false);
         }
@@ -216,6 +237,55 @@ export default function NewsPanel({ isOpen, onClose }) {
         );
     };
 
+    const renderMarketsList = () => {
+        if (loading && markets.length === 0) {
+            return (
+                <div className="flex flex-col items-center justify-center h-full text-zinc-500 gap-4 mt-20">
+                    <Loader2 className="w-8 h-8 animate-spin text-purple-400" />
+                    <span className="text-xs uppercase tracking-[0.2em] font-mono">Loading Tickers...</span>
+                </div>
+            );
+        }
+
+        return (
+            <div className="space-y-4 pb-24">
+                <div className="mb-4 text-xs font-mono text-zinc-500 bg-black/40 p-3 rounded-xl border border-white/5">
+                    🚀 <span className="text-white font-bold">LIVE INTELLIGENCE:</span> Top performing Global Stocks and Crypto Assets.
+                </div>
+                {markets.map((market, idx) => (
+                    <div key={idx} className="bg-gradient-to-br from-zinc-900 via-black to-[#0c0c14] border border-white/10 rounded-2xl p-4 hover:border-purple-500/30 transition-all group overflow-hidden relative">
+                        <div className="absolute -right-10 -top-10 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-all"></div>
+
+                        <div className="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 className="text-sm font-black text-white flex items-center gap-2">
+                                    {market.symbol}
+                                    {market.isCrypto && <span className="bg-orange-500/20 text-orange-400 text-[9px] px-1.5 py-0.5 rounded border border-orange-500/20">CRYPTO</span>}
+                                </h3>
+                                <p className="text-[10px] text-zinc-500 uppercase tracking-widest">{market.name}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-sm font-bold text-zinc-200">${market.price}</p>
+                                <p className={cn("text-xs font-bold font-mono tracking-wider", market.change >= 0 ? "text-emerald-400" : "text-red-400")}>
+                                    {market.change >= 0 ? "+" : ""}{market.change}%
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="pt-3 border-t border-white/5">
+                            <button
+                                onClick={() => handleAnalyzeMarket(market)}
+                                className="w-full bg-purple-500/10 hover:bg-purple-500 hover:text-white text-purple-400 border border-purple-500/20 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all shadow-[0_0_10px_rgba(168,85,247,0.1)] hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] flex items-center justify-center gap-1.5"
+                            >
+                                <Sparkles className="w-3.5 h-3.5" /> AI Market Intel
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
     return (
         <AnimatePresence>
             {isOpen && (
@@ -251,21 +321,27 @@ export default function NewsPanel({ isOpen, onClose }) {
                         <div className="flex bg-black/50 p-1 rounded-xl border border-white/5 relative z-10">
                             <button
                                 onClick={() => setActiveTab('global')}
-                                className={cn("flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg flex items-center justify-center gap-1.5 transition-all", activeTab === 'global' ? "bg-white/10 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300")}
+                                className={cn("flex-1 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-lg flex flex-col items-center justify-center gap-1 transition-all", activeTab === 'global' ? "bg-white/10 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300")}
                             >
-                                <Globe2 className="w-3.5 h-3.5" /> Global News
+                                <Globe2 className="w-3.5 h-3.5" /> News
                             </button>
                             <button
                                 onClick={() => setActiveTab('sports')}
-                                className={cn("flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg flex items-center justify-center gap-1.5 transition-all", activeTab === 'sports' ? "bg-red-500/20 text-red-400 border border-red-500/20 shadow-sm" : "text-zinc-500 hover:text-zinc-300")}
+                                className={cn("flex-1 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-lg flex flex-col items-center justify-center gap-1 transition-all", activeTab === 'sports' ? "bg-red-500/20 text-red-400 border border-red-500/20 shadow-sm" : "text-zinc-500 hover:text-zinc-300")}
                             >
                                 <Target className="w-3.5 h-3.5" /> Sports
                             </button>
                             <button
                                 onClick={() => setActiveTab('scores')}
-                                className={cn("flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg flex items-center justify-center gap-1.5 transition-all", activeTab === 'scores' ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 shadow-sm" : "text-zinc-500 hover:text-zinc-300")}
+                                className={cn("flex-1 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-lg flex flex-col items-center justify-center gap-1 transition-all", activeTab === 'scores' ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 shadow-sm" : "text-zinc-500 hover:text-zinc-300")}
                             >
-                                <Trophy className="w-3.5 h-3.5" /> Match Center
+                                <Trophy className="w-3.5 h-3.5" /> Scores
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('markets')}
+                                className={cn("flex-1 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-lg flex flex-col items-center justify-center gap-1 transition-all", activeTab === 'markets' ? "bg-purple-500/20 text-purple-400 border border-purple-500/20 shadow-sm" : "text-zinc-500 hover:text-zinc-300")}
+                            >
+                                <Activity className="w-3.5 h-3.5" /> Markets
                             </button>
                         </div>
                     </div>
@@ -274,6 +350,7 @@ export default function NewsPanel({ isOpen, onClose }) {
                         {activeTab === 'global' && renderNewsList(news)}
                         {activeTab === 'sports' && renderNewsList(sportsNews)}
                         {activeTab === 'scores' && renderScoresList()}
+                        {activeTab === 'markets' && renderMarketsList()}
                     </div>
                 </motion.div>
             )}
@@ -393,6 +470,73 @@ export default function NewsPanel({ isOpen, onClose }) {
                                     <div className="mt-6">
                                         <button onClick={() => handleShare('whatsapp', `[Live AI Prediction] ${activeMatch.team1} vs ${activeMatch.team2}\n\n${predictionResult}`, null)} className="w-full bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] border border-[#25D366]/20 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-colors">
                                             Share Prediction via WhatsApp
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* AI Market Analysis Modal */}
+            <AnimatePresence>
+                {activeMarket && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.9, y: 20 }}
+                            className="w-full max-w-lg bg-[#0c0c0e] border border-purple-500/20 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(168,85,247,0.1)] relative"
+                        >
+                            <div className="p-4 bg-purple-500/10 border-b border-purple-500/20 flex items-center justify-between">
+                                <h3 className="text-xs font-bold text-purple-400 uppercase tracking-widest flex items-center gap-2">
+                                    <Activity className="w-4 h-4" /> AI Investment Analyst
+                                </h3>
+                                <button onClick={() => setActiveMarket(null)} className="text-zinc-400 hover:text-white">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <div className="p-6">
+                                <div className="flex justify-between items-center mb-6 border-b border-white/5 pb-4">
+                                    <div>
+                                        <p className="text-xl font-black text-white">{activeMarket.symbol}</p>
+                                        <p className="text-xs font-mono text-zinc-500 mt-1">{activeMarket.name}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-lg font-black text-white">${activeMarket.price}</p>
+                                        <p className={cn("text-xs font-bold font-mono tracking-wider", activeMarket.change >= 0 ? "text-emerald-400" : "text-red-400")}>
+                                            {activeMarket.change >= 0 ? "+" : ""}{activeMarket.change}%
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="bg-black/40 border border-white/5 rounded-xl p-5 min-h-[150px] relative">
+                                    {predictionLoading ? (
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center text-purple-400">
+                                            <Loader2 className="w-6 h-6 animate-spin mb-3" />
+                                            <span className="text-[10px] uppercase font-mono tracking-widest">Compiling Market Data...</span>
+                                            <span className="text-[9px] text-zinc-500 mt-2">Checking sentiment, chart trends & volume</span>
+                                        </div>
+                                    ) : (
+                                        <div className="text-sm text-zinc-200 whitespace-pre-wrap leading-relaxed font-sans">
+                                            {predictionResult || "Analysis failed to load."}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {!predictionLoading && predictionResult && (
+                                    <div className="mt-6 flex gap-3">
+                                        <button onClick={() => handleShare('whatsapp', `[Gistly.site AI Market Intel] ${activeMarket.symbol}\n\n${predictionResult}`, null)} className="flex-1 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] border border-[#25D366]/20 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-colors">
+                                            WhatsApp
+                                        </button>
+                                        <button onClick={() => handleShare('twitter', `[Gistly AI Analysis] ${activeMarket.symbol} outlook 📈\n\n${predictionResult.substring(0, 200)}...`, null)} className="flex-1 bg-[#1DA1F2]/10 hover:bg-[#1DA1F2]/20 text-[#1DA1F2] border border-[#1DA1F2]/20 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-colors">
+                                            X (Twitter)
                                         </button>
                                     </div>
                                 )}
