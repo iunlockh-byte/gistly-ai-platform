@@ -781,7 +781,7 @@ const DraggableNode = ({ data, removeNode, updateNodePosition }) => {
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
-            className={`absolute w-[450px] pointer-events-auto bg-[#111113]/80 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col z-20 group`}
+            className={`absolute w-[calc(100vw-32px)] md:w-[450px] pointer-events-auto bg-[#111113]/80 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col z-20 group`}
             style={{ x: data.x, y: data.y }}
             whileDrag={{ scale: 1.02, zIndex: 50, boxShadow: '0 30px 60px rgba(99,102,241,0.2)' }}
         >
@@ -888,6 +888,7 @@ const DraggableNode = ({ data, removeNode, updateNodePosition }) => {
 
 export default function App() {
     const { user, isSignedIn } = useUser();
+    const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [nodes, setNodes] = useState([]); // Active nodes on canvas
     const [workflowId, setWorkflowId] = useState(`flow_${Math.random().toString(36).substr(2, 9)}`);
@@ -902,7 +903,15 @@ export default function App() {
     const [isAboutOpen, setIsAboutOpen] = useState(false);
     const [isPricingOpen, setIsPricingOpen] = useState(false);
 
-    const filteredTools = tools.filter(tool => selectedCategory === 'All' || tool.category === selectedCategory);
+    // Mobile exclusive states
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    const filteredTools = tools.filter(tool => {
+        const matchesCategory = selectedCategory === 'All' || tool.category === selectedCategory;
+        const matchesSearch = tool.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            tool.description.toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesCategory && matchesSearch;
+    });
 
     const saveWorkflow = async () => {
         if (!isSignedIn) {
@@ -962,10 +971,13 @@ export default function App() {
         const newNode = {
             id: `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             toolId,
-            // Spawn systematically around center
-            x: window.innerWidth / 2 - 225 + offset - 100,
-            y: window.innerHeight / 2 - 200 + offset,
+            // Spawn systematically around center, adjusting for mobile width
+            x: window.innerWidth < 768 ? 16 : (window.innerWidth / 2 - 225 + offset - 100),
+            y: window.innerWidth < 768 ? 150 + offset : (window.innerHeight / 2 - 200 + offset),
         };
+        if (window.innerWidth < 768) {
+            setIsMobileMenuOpen(false); // Close mobile menu after selecting a tool
+        }
         setNodes(curr => [...curr, newNode]);
     };
 
@@ -1076,11 +1088,16 @@ export default function App() {
                 </div>
             </nav>
 
-            {/* Floating Left Side Dashboard / Tool Dock */}
+            {/* Floating Left Side Dashboard / Tool Dock (Desktop & Mobile Sheet) */}
             <motion.div
                 initial={{ x: -100, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
-                className="fixed left-6 top-24 bottom-6 w-72 bg-[#111113]/60 backdrop-blur-xl border border-white/10 rounded-3xl p-5 flex flex-col z-40 shadow-2xl"
+                className={cn(
+                    "fixed z-40 bg-[#111113]/60 backdrop-blur-3xl border border-white/10 flex flex-col shadow-2xl transition-all duration-300",
+                    isMobileMenuOpen
+                        ? "inset-x-0 bottom-20 top-20 rounded-t-3xl p-5 md:left-6 md:top-24 md:bottom-6 md:w-72 md:rounded-3xl"
+                        : "hidden md:flex left-6 top-24 bottom-6 w-72 rounded-3xl p-5"
+                )}
             >
                 <div className="mb-6 space-y-4">
                     <div className="flex items-center justify-between">
@@ -1104,10 +1121,22 @@ export default function App() {
                         <button
                             onClick={saveWorkflow}
                             disabled={isSaving || nodes.length === 0}
-                            className="p-2 bg-indigo-500 hover:bg-indigo-400 disabled:bg-zinc-800 disabled:text-zinc-600 rounded-lg transition-all"
+                            className="p-1.5 bg-indigo-500 hover:bg-indigo-400 disabled:bg-zinc-800 disabled:text-zinc-600 rounded-lg transition-all"
                         >
-                            {isSaving ? <Loader2 className="w-3 h-3 animate-spin text-white" /> : <Save className="w-3 h-3 text-white" />}
+                            {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin text-white" /> : <Save className="w-3.5 h-3.5 text-white" />}
                         </button>
+                    </div>
+
+                    <div className="relative group/search">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within/search:text-indigo-400 transition-colors">
+                            <Search className="w-3.5 h-3.5" />
+                        </div>
+                        <input
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full bg-black/40 border border-white/5 focus:border-indigo-500/50 rounded-xl py-2 pl-9 pr-4 text-[11px] text-zinc-300 outline-none transition-all placeholder:text-zinc-700"
+                            placeholder="Search nodes..."
+                        />
                     </div>
                 </div>
 
@@ -1198,8 +1227,9 @@ export default function App() {
                             initial={{ opacity: 0, scale: 0.95, y: 10 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                            className="bg-[#111113] border border-white/10 p-8 rounded-3xl max-w-xl w-full shadow-2xl relative"
+                            className="bg-[#111113]/70 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl max-w-xl w-full shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] relative overflow-hidden group"
                         >
+                            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
                             <button
                                 onClick={() => setIsGuideOpen(false)}
                                 className="absolute top-6 right-6 text-zinc-500 hover:text-white transition-colors"
@@ -1449,8 +1479,9 @@ export default function App() {
                             initial={{ scale: 0.95, y: 10 }}
                             animate={{ scale: 1, y: 0 }}
                             exit={{ scale: 0.95, y: 10 }}
-                            className="bg-[#111113] border border-white/10 p-8 rounded-3xl max-w-md w-full shadow-2xl relative"
+                            className="bg-[#111113]/70 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl max-w-md w-full shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] relative overflow-hidden group"
                         >
+                            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
                             <button
                                 onClick={() => setIsHistoryOpen(false)}
                                 className="absolute top-6 right-6 text-zinc-500 hover:text-white transition-colors"
@@ -1497,6 +1528,55 @@ export default function App() {
             </AnimatePresence>
 
             <GistlyVoiceAssistant />
+
+            {/* Mobile Bottom Navigation App Bar */}
+            <div className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-[#09090b]/80 backdrop-blur-2xl border-t border-white/10 z-[100] pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+                <div className="flex items-center justify-around h-full px-2">
+                    <button
+                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                        className={cn("flex flex-col items-center justify-center w-16 h-full gap-1 transition-colors", isMobileMenuOpen ? "text-indigo-400" : "text-zinc-500 hover:text-zinc-300")}
+                    >
+                        <LayoutDashboard className="w-6 h-6" />
+                        <span className="text-[10px] font-bold tracking-wider">Tools</span>
+                    </button>
+
+                    <button onClick={fetchHistory} className="flex flex-col items-center justify-center w-16 h-full gap-1 text-zinc-500 hover:text-indigo-400 transition-colors">
+                        <History className="w-6 h-6" />
+                        <span className="text-[10px] font-bold tracking-wider">History</span>
+                    </button>
+
+                    {/* Floating FAB - Center Clear Canvas Action */}
+                    <div className="relative -top-6 flex flex-col items-center">
+                        <button
+                            onClick={clearCanvas}
+                            style={{ WebkitTapHighlightColor: 'transparent' }}
+                            className="w-14 h-14 bg-gradient-to-tr from-indigo-600 to-cyan-500 rounded-full flex items-center justify-center shadow-[0_10px_30px_rgba(99,102,241,0.5)] border-2 border-[#09090b] text-white active:scale-95 transition-all outline-none"
+                        >
+                            <FilePlus className="w-6 h-6 drop-shadow-md" />
+                        </button>
+                    </div>
+
+                    <button onClick={() => setIsGuideOpen(true)} className="flex flex-col items-center justify-center w-16 h-full gap-1 text-zinc-500 hover:text-indigo-400 transition-colors">
+                        <Sparkles className="w-6 h-6" />
+                        <span className="text-[10px] font-bold tracking-wider">Guide</span>
+                    </button>
+
+                    <div className="flex flex-col items-center justify-center w-16 h-full gap-1">
+                        <SignedIn>
+                            <UserButton appearance={{ elements: { userButtonAvatarBox: "w-7 h-7 border-2 border-[#09090b] shadow-md" } }} />
+                        </SignedIn>
+                        <SignedOut>
+                            <SignInButton mode="modal">
+                                <button className="text-zinc-500 flex flex-col items-center gap-1 hover:text-zinc-300">
+                                    <UserCheck className="w-6 h-6" />
+                                    <span className="text-[10px] font-bold tracking-wider">Sign In</span>
+                                </button>
+                            </SignInButton>
+                        </SignedOut>
+                    </div>
+                </div>
+            </div>
+
         </div>
     );
 }
