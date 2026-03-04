@@ -687,6 +687,80 @@ async def get_news_feed():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch news stream: {str(e)}")
 
+@app.get("/api/news/sports")
+async def get_sports_news():
+    try:
+        url = "https://news.google.com/news/rss/headlines/section/topic/SPORTS?hl=en-US&gl=US&ceid=US:en"
+        feed = feedparser.parse(url)
+        
+        articles = []
+        for entry in feed.entries[:20]:
+            articles.append({
+                "title": entry.title,
+                "link": entry.link,
+                "published": entry.get('published', ''),
+                "source": entry.get('source', {}).get('title', 'Sports News')
+            })
+            
+        return {"articles": articles}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch sports stream: {str(e)}")
+
+@app.get("/api/scores/live")
+async def get_live_scores():
+    # Placeholder for a real Sports Data Provider (e.g., Sportmonks, CricAPI)
+    # Returning high-quality simulated data for the Match Center UI demonstration
+    matches = [
+        {
+            "id": "match_001",
+            "sport": "Cricket",
+            "tournament": "T20 World Cup",
+            "team1": "Sri Lanka",
+            "team2": "India",
+            "score1": "175/6 (20.0)",
+            "score2": "142/4 (16.2)",
+            "status": "India need 34 runs in 22 balls",
+            "context": "Sri Lanka batted first and scored 175. India is currently at 142 for 4 in 16.2 overs. Virat Kohli is at the crease.",
+            "live": True
+        },
+        {
+            "id": "match_002",
+            "sport": "Football",
+            "tournament": "Premier League",
+            "team1": "Arsenal",
+            "team2": "Manchester City",
+            "score1": "2",
+            "score2": "1",
+            "status": "78' - 2nd Half",
+            "context": "Arsenal is leading 2-1 against Manchester City. City is pressing hard with 65% possession in the last 10 mins.",
+            "live": True
+        },
+        {
+            "id": "match_003",
+            "sport": "Cricket",
+            "tournament": "Ashes Test Series",
+            "team1": "Australia",
+            "team2": "England",
+            "score1": "350 & 50/1",
+            "score2": "280",
+            "status": "Day 3 - Stumps. AUS lead by 120 runs.",
+            "context": "Australia scored 350 in first innings, England replied with 280. Australia is currently 50/1 in their second innings at Stumps on Day 3.",
+            "live": False
+        }
+    ]
+    return {"matches": matches}
+
+@app.post("/api/scores/predict")
+async def predict_match(req: AIRequest):
+    prompt = (
+        f"You are an expert sports analyst AI for Gistly.site. Calculate the approximate live winning probability for this match "
+        f"based on the current live match context. "
+        f"Provide a short 2-3 sentence analysis of the situation and explicitly state the winning percentages for both teams.\n\n"
+        f"Match Context:\n{req.content}\n"
+    )
+    result = await generate_ai_response(prompt)
+    return {"result": result}
+
 @app.post("/api/news/summarize")
 async def news_summarize(req: AIRequest):
     try:
