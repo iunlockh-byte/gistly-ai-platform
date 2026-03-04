@@ -867,16 +867,25 @@ async def analyze_market(req: AIRequest):
             )
 
         prompt = (
-            f"You are a professional financial AI advisor for Gistly.site. "
-            f"Analyze the following financial asset or stock ticker and provide an investment outlook.\n\n"
-            f"Asset/Ticker: {symbol}\n"
-            f"Recent Market Context:\n{market_context}\n\n"
-            f"Provide your analysis in a structured, easy-to-read layout:\n"
-            f"1. Executive Summary (2 sentences max)\n"
-            f"2. Bull Case (Why to buy - 2 short points)\n"
-            f"3. Bear Case (Risks - 2 short points)\n"
-            f"4. AI Sentiment (Bullish/Bearish/Neutral)\n\n"
-            f"DISCLAIMER: End the message with exactly: '⚠️ Note: This is an AI-generated analysis. Always conduct your own financial research before investing.'"
+            f"Act as 'Gistly AI', an elite cyberpunk financial intelligence unit. "
+            f"Run a neuro-analysis on the following financial asset and output a highly stylized, aesthetic report.\n\n"
+            f"Target Asset: {symbol}\n"
+            f"Live Telemetry:\n{market_context}\n\n"
+            f"STRICT FORMAT REQUIREMENT (Follow this exact visual vibe, use markdown, emojis, and exact headers pacing):\n"
+            f"---\n"
+            f"🔮 **GISTLY NEURAL REPORT: {symbol}**\n\n"
+            f"**⚡ THE GIST (Overview):**\n"
+            f"[Write 1-2 punchy, futuristic sentences summarizing the current market trajectory]\n\n"
+            f"**🟢 BULL SIGNALS (Upside Potential):**\n"
+            f"  ✦ [Short, punchy point 1]\n"
+            f"  ✦ [Short, punchy point 2]\n\n"
+            f"**🔴 BEAR SIGNALS (Risk Factors):**\n"
+            f"  ✦ [Short, punchy point 1]\n"
+            f"  ✦ [Short, punchy point 2]\n\n"
+            f"**🧠 AI NEURAL SENTIMENT:**\n"
+            f"[BULLISH 🚀 / BEARISH 📉 / NEUTRAL ⚖️] - [Short 1 line reason]\n\n"
+            f"---\n"
+            f"⚠️ *Disclaimer: Generated via Gistly.site Neural Network. Not financial advice. Always DYOR.*"
         )
         result = await generate_ai_response(prompt)
         return {"result": result}
