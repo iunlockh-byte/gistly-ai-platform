@@ -22,7 +22,7 @@ import yfinance as yf
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import stripe
+from lemonsqueezy import LemonSqueezy
 
 load_dotenv()
 
@@ -63,14 +63,17 @@ if not HF_TOKEN:
 # Initialize clients
 genai.configure(api_key=API_KEY)
 
-# Configure Stripe
-STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
-if STRIPE_SECRET_KEY:
-    stripe.api_key = STRIPE_SECRET_KEY
+# Configure Lemon Squeezy
+LEMON_SQUEEZY_API_KEY = os.getenv("LEMON_SQUEEZY_API_KEY")
+LEMON_SQUEEZY_STORE_ID = os.getenv("LEMON_SQUEEZY_STORE_ID")
+
+if LEMON_SQUEEZY_API_KEY:
+    ls = LemonSqueezy(LEMON_SQUEEZY_API_KEY)
 else:
-    print("WARNING: STRIPE_SECRET_KEY not found. Payments disabled.")
+    ls = None
+    print("WARNING: LEMON_SQUEEZY_API_KEY not found. Payments disabled.")
     
-# Gistly URL for Stripe Redirects (use localhost for dev, or the env variable if deployed)
+# Gistly URL for Redirects
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 model = genai.GenerativeModel("gemini-flash-latest")
 apify_client = ApifyClient(APIFY_TOKEN) if APIFY_TOKEN else None
@@ -947,25 +950,62 @@ async def send_contact_email(data: ContactMessage):
         raise HTTPException(status_code=500, detail=f"Transmission failed: {str(e)}")
 
 class CheckoutRequest(BaseModel):
-    price_id: str
+    variant_id: str
 
 @app.post("/api/create-checkout-session")
 async def create_checkout_session(request: CheckoutRequest):
-    if not STRIPE_SECRET_KEY:
-        raise HTTPException(status_code=500, detail="Stripe payments are not configured on this server.")
+    if not ls or not LEMON_SQUEEZY_STORE_ID:
+        raise HTTPException(status_code=500, detail="Lemon Squeezy credentials are not configured on this server.")
         
     try:
-        session = stripe.checkout.Session.create(
-            payment_method_types=['card'],
-            line_items=[{
-                'price': request.price_id,
-                'quantity': 1,
-            }],
-            mode='subscription',
-            success_url=f"{FRONTEND_URL}/?payment=success",
-            cancel_url=f"{FRONTEND_URL}/?payment=cancelled",
+        # We manually build the API request as the python SDK might be limited or changing
+        headers = {
+            "Accept": "application/vnd.api+json",
+            "Content-Type": "application/vnd.api+json",
+            "Authorization": f"Bearer {LEMON_SQUEEZY_API_KEY}"
+        }
+        
+        payload = {
+            "data": {
+                "type": "checkouts",
+                "attributes": {
+                    "checkout_data": {
+                        "custom": {
+                            "user_id": "guest" # Can be updated with real user ID if using Clerk
+                        }
+                    }
+                },
+                "relationships": {
+                    "store": {
+                        "data": {
+                            "type": "stores",
+                            "id": LEMON_SQUEEZY_STORE_ID
+                        }
+                    },
+                    "variant": {
+                        "data": {
+                            "type": "variants",
+                            "id": request.variant_id
+                        }
+                    }
+                }
+            }
+        }
+        
+        response = requests.post(
+            "https://api.lemonsqueezy.com/v1/checkouts", 
+            json=payload, 
+            headers=headers
         )
-        return {"url": session.url}
+        
+        if response.status_code != 201:
+            raise Exception(f"Failed to create checkout: {response.text}")
+            
+        data = response.json()
+        checkout_url = data["data"]["attributes"]["url"]
+        
+        return {"url": checkout_url}
+        
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
