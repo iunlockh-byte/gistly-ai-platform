@@ -591,7 +591,7 @@ const PricingModal = ({ isOpen, onClose }) => {
             name: "Pro Architect",
             price: "$19",
             period: "/mo",
-            price_id: "price_pro", // Replace with real Stripe Price ID
+            price_id: "1367798", // Pro Architect Lemon Squeezy Variant ID
             desc: "The professional standard",
             features: ["Unlimited Neural Ops", "Priority GPU Access", "Gistly Voice AI", "Advanced Debugger", "Early Beta Access"],
             button: "Upgrade to Pro",
@@ -603,7 +603,7 @@ const PricingModal = ({ isOpen, onClose }) => {
             name: "Neural Agency",
             price: "$99",
             period: "/mo",
-            price_id: "price_agency", // Replace with real Stripe Price ID
+            price_id: "1367804", // Neural Agency Lemon Squeezy Variant ID
             desc: "Scale your intelligence",
             features: ["Everything in Pro", "API Developer Key", "Custom Model Tuning", "Dedicated Data Line", "SLA Guarantee"],
             button: "Contact Sales",
