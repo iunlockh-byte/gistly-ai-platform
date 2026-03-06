@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Gistly.site - Important Codes (Concise)</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-twilight.min.css" rel="stylesheet" />
+    <style>
+        body { font-family: Arial, sans-serif; background: white; margin: 40px; }
+        h1 { text-align: center; color: #333; }
+        h2 { border-bottom: 2px solid #555; padding-bottom: 5px; margin-top: 40px; page-break-before: always; }
+        h2:first-of-type { page-break-before: auto; }
+        pre { background: #141414; border-radius: 8px; padding: 15px; font-size: 11px; white-space: pre-wrap; word-wrap: break-word; }
+        .trunc-msg { color: #888; font-style: italic; margin-top: 10px; display: block; }
+        @media print {
+            body { font-family: monospace; font-size: 10pt; margin: 0; background: white; }
+            pre { padding: 10px; background: white; color: black; border: 1px solid #ccc; font-size: 8pt; white-space: pre-wrap; word-wrap: break-word; }
+            h2 { page-break-before: always; border-bottom: 1px solid black; }
+            .trunc-msg { color: #555; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Gistly.site - Most Important Core Architectures (Concise)</h1>
+    <p style="text-align: center;">Press <b>Ctrl + P</b> (or Cmd + P) to Print and save as PDF. Around 20 pages.</p>
+<h2>Backend API (main.py) - Core Logic Setup (backend/main.py)</h2>
+<pre><code class="language-python">import os
+import base64
+import requests
+import json
+import re
+import urllib3
+import time
+import urllib.parse
+import sqlite3
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+import google.generativeai as genai
+from apify_client import ApifyClient
+from groq import Groq
+from bs4 import BeautifulSoup
+from gtts import gTTS
+import tempfile
+from dotenv import load_dotenv
+import feedparser
+import yfinance as yf
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from lemonsqueezy import LemonSqueezy
+
+load_dotenv()
+
+from supabase import create_client, Client
+
+# Database Initialization (SQLite removed, using Supabase)
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+supabase: Client | None = None
+if SUPABASE_URL and SUPABASE_KEY:
+    try:
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        print("Successfully connected to Supabase")
+    except Exception as e:
+        print(f"Failed to initialize Supabase client: {e}")
+else:
+    print("WARNING: Supabase credentials not found. Database features will be disabled.")
+
+# Configure the Gemini API
+API_KEY = os.getenv("GEMINI_API_KEY")
+if not API_KEY:
+    # We won't crash, but endpoints will fail with a helpful message
+    print("WARNING: GEMINI_API_KEY not found in environment variables")
+
+# Configure Apify Client
+APIFY_TOKEN = os.getenv("APIFY_API_TOKEN")
+
+# Configure Groq Client (Fallback)
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+# Configure Hugging Face Token for Image Generation
+HF_TOKEN = os.getenv("HF_TOKEN")
+LEONARDO_API_KEY = os.getenv("LEONARDO_API_KEY")  # High-End Backup
+if not HF_TOKEN:
+    print("WARNING: HF_TOKEN not found in environment variables.")
+
+# Initialize clients
+genai.configure(api_key=API_KEY)
+
+# Configure Lemon Squeezy
+LEMON_SQUEEZY_API_KEY = os.getenv("LEMON_SQUEEZY_API_KEY")
+LEMON_SQUEEZY_STORE_ID = os.getenv("LEMON_SQUEEZY_STORE_ID")
+
+if LEMON_SQUEEZY_API_KEY:
+    ls = LemonSqueezy(LEMON_SQUEEZY_API_KEY)
+else:
+    ls = None
+    print("WARNING: LEMON_SQUEEZY_API_KEY not found. Payments disabled.")
+    
+# Gistly URL for Redirects
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+model = genai.GenerativeModel("gemini-flash-latest")
+apify_client = ApifyClient(APIFY_TOKEN) if APIFY_TOKEN else None
+groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
+
+app = FastAPI(
+    title="Gistly Multi-Tool API",
+    description="Backend for Gistly AI's suite of developer and creator tools.",
+    version="2.0.0",
+)
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class AIRequest(BaseModel):
+    content: str
+    context: str = ""
+
+
+@app.get("/")
+async def status():
+    return {"status": "online", "model": "gemini-1.5-pro"}
+
+
+async def ask_gemini(prompt: str):
+    """Internal function to call Gemini API."""
+    if not API_KEY:
+        raise Exception("Gemini API Key is not configured.")
+    response = model.generate_content(prompt)
+    if not response.text:
+        raise Exception("Gemini returned an empty response.")
+    return response.text
+
+
+async def ask_groq(prompt: str):
+    """Internal function to call Groq API (Fallback)."""
+    if not groq_client:
+        raise Exception("Groq API Key is not configured.")
+    completion = groq_client.chat.completions.create(
+        model="llama3-8b-8192",
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return completion.choices[0].message.content
+
+
+async def generate_ai_response(prompt: str):
+    """Unified AI interface with automatic fallback across providers."""
+    errors = []
+
+    # Provider 1: Gemini (Primary)
+    try:
+        return await ask_gemini(prompt)
+    except Exception as e:
+        error_msg = f"Gemini failed: {str(e)}"
+        print(error_msg)
+        errors.append(error_msg)
+
+    # Provider 2: Groq (Fallback)
+    try:
+        if groq_client:
+            print("Attempting fallback to Groq...")
+            return await ask_groq(prompt)
+    except Exception as e:
+        error_msg = f"Groq fallback failed: {str(e)}"
+        print(error_msg)
+        errors.append(error_msg)
+
+    # If all providers fail
+    raise HTTPException(
+        status_code=500,
+        detail=f"All AI providers failed. Diagnostics: {'; '.join(errors)}",
+    )
+
+
+@app.post("/api/summarize")
+async def summarize(req: AIRequest):
+    prompt = f"Summarize the following text concisely. Focus on the key takeaways:\n\n{req.content}"
+    result = await generate_ai_response(prompt)
+    return {"result": result}
+
+
+@app.post("/api/debug")
+async def debug_code(req: AIRequest):
+    prompt = (
+        f"Identify bugs and provide a fix for the following code. "
+        f"Explain why the bug occurred.\n\nCode:\n{req.content}"
+    )
+    result = await generate_ai_response(prompt)
+    return {"result": result}
+
+
+@app.post("/api/humanize")
+async def humanize(req: AIRequest):
+    prompt = (
+        f"Rewrite the following text to sound more natural, human, and conversational. "
+        f"Avoid generic AI patterns while maintaining the original meaning:\n\n{req.content}"
+    )
+    result = await generate_ai_response(prompt)
+    return {"result": result}
+
+
+@app.post("/api/resume-optimize")
+async def optimize_resume(req: AIRequest):
+    prompt = (
+        f"Analyze this resume content and suggest optimizations for ATS (Applicant Tracking Systems). "
+        f"Highlight keyword improvements and formatting suggestions:\n\n{req.content}"
+    )
+    result = await generate_ai_response(prompt)
+    return {"result": result}
+
+
+@app.post("/api/sql-generate")
+async def generate_sql(req: AIRequest):
+    prompt = (
+        f"Generate a well-optimized SQL query based on this natural language description. "
+        f"Assume standard relational database schemas:\n\n{req.content}"
+    )
+    result = await generate_ai_response(prompt)
+    return {"result": result}
+
+
+@app.post("/api/social-post")
+async def generate_social(req: AIRequest):
+    prompt = (
+        f"Generate highly engaging social media posts for Twitter, LinkedIn, and Instagram "
+        f"based on this topic or content:\n\n{req.content}"
+    )
+    result = await generate_ai_response(prompt)
+    return {"result": result}
+
+
+@app.post("/api/email-gen")
+async def generate_email(req: AIRequest):
+    prompt = (
+        f"Write a professional and highly effective email based on the following context. "
+        f"Ensure the tone is appropriate for a business setting:\n\n{req.content}"
+    )
+    result = await generate_ai_response(prompt)
+    return {"result": result}
+
+
+@app.post("/api/regex-gen")
+async def generate_regex(req: AIRequest):
+    prompt = (
+        f"Create a Regular Expression (Regex) for the following natural language description. "
+        f"Provide the regex pattern and a brief explanation of how it works:\n\n{req.content}"
+    )
+    result = await generate_ai_response(prompt)
+    return {"result": result}
+
+
+@app.post("/api/cover-letter")
+async def generate_cover_letter(req: AIRequest):
+    prompt = (
+        f"Write a compelling and professional cover letter based on the following details "
+        f"(job description, personal experience, etc.). Highlight key strengths:\n\n{req.content}"
+    )
+    result = await generate_ai_response(prompt)
+    return {"result": result}
+
+
+@app.post("/api/grammar-fix")
+async def fix_grammar(req: AIRequest):
+    prompt = (
+        f"Act as a professional proofreader. Fix any grammar, spelling, or punctuation errors "
+        f"in the following text. Also, suggest improvements to make it sound more professional:\n\n{req.content}"
+    )
+
+
+... [ CONTENT TRUNCATED TO FIRST 250 LINES FOR PRINTING ] ...</code></pre>
+<h2>Frontend (App.jsx) - Main Component & State (src/App.jsx)</h2>
+<pre><code class="language-javascript">import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence, useDragControls } from 'framer-motion';
+
+import {
+    FileText, Code, Image as ImageIcon, Video, UserCheck,
+    Terminal, FileSearch, RefreshCw, FileCode, Search,
+    FileCheck, FileJson, Share2, Database, LayoutDashboard,
+    Sparkles, Zap, ChevronRight, Github, ExternalLink, Menu, X, ArrowLeft, Send, Loader2,
+    Lock, Wand2, Calculator, Settings, Globe, Volume2, Copy, Play, Mail, Cpu, Orbit, Fingerprint, Shield, MessageSquare, Maximize2, Move,
+    Mic, MicOff, Bot, Check, CreditCard, Star, History, Save, FilePlus, FolderOpen, Radio
+} from 'lucide-react';
+import axios from 'axios';
+import { clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+import { SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+import { Canvas, useFrame } from '@react-three/fiber';
+import { Sphere, MeshDistortMaterial } from '@react-three/drei';
+import Marquee from 'react-fast-marquee';
+import NewsPanel from './NewsPanel';
+
+function cn(...inputs) {
+    return twMerge(clsx(inputs));
+}
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+const tools = [
+    {
+        id: 'summarizer',
+        endpoint: '/api/summarize',
+        name: 'AI Summarizer',
+        description: 'Transform long articles into concise gists.',
+        icon: FileText,
+        color: 'text-blue-400',
+        bg: 'bg-blue-500/10',
+        border: 'border-blue-500/20',
+        category: 'Content',
+        placeholder: 'Paste your long text here...',
+        buttonText: 'Summarize Intelligence'
+    },
+    {
+        id: 'bug-fixer',
+        endpoint: '/api/debug',
+        name: 'AI Code Debugger',
+        description: 'Paste your code and let AI find and fix bugs.',
+        icon: Terminal,
+        color: 'text-orange-400',
+        bg: 'bg-orange-500/10',
+        border: 'border-orange-500/20',
+        category: 'Development',
+        placeholder: '// Paste your buggy code here...',
+        buttonText: 'Initiate Debugging'
+    },
+    {
+        id: 'humanizer',
+        endpoint: '/api/humanize',
+        name: 'Content Humanizer',
+        description: 'Make AI text sound authentically human.',
+        icon: UserCheck,
+        color: 'text-emerald-400',
+        bg: 'bg-emerald-500/10',
+        border: 'border-emerald-500/20',
+        category: 'Content',
+        placeholder: 'Paste AI-generated text here...',
+        buttonText: 'Humanize Text'
+    },
+    {
+        id: 'sql-gen',
+        endpoint: '/api/sql-generate',
+        name: 'Smart SQL Generator',
+        description: 'Natural language to optimized SQL queries.',
+        icon: Database,
+        color: 'text-cyan-400',
+        bg: 'bg-cyan-500/10',
+        border: 'border-cyan-500/20',
+        category: 'Data',
+        placeholder: 'Describe the query you need (e.g., "Find top 10 customers by revenue last month")...',
+        buttonText: 'Compile SQL'
+    },
+    {
+        id: 'image',
+        endpoint: '/api/generate-image',
+        name: 'AI Image Gen',
+        description: 'Generate stunning AI images from text prompts.',
+        icon: ImageIcon,
+        color: 'text-pink-400',
+        bg: 'bg-pink-500/10',
+        border: 'border-pink-500/20',
+        category: 'Creative',
+        placeholder: 'Describe the image you want to create in vivid detail...',
+        buttonText: 'Render Visual',
+        isImage: true
+    },
+    {
+        id: 'email-gen',
+        endpoint: '/api/email-gen',
+        name: 'Email Composer',
+        description: 'Draft highly effective professional emails instantly.',
+        icon: Send,
+        color: 'text-blue-500',
+        bg: 'bg-blue-600/10',
+        border: 'border-blue-600/20',
+        category: 'Business',
+        placeholder: 'Who is this email for and what should it say?',
+        buttonText: 'Draft Communication'
+    },
+    {
+        id: 'regex-gen',
+        endpoint: '/api/regex-gen',
+        name: 'Regex Builder',
+        description: 'Translate natural language to complex Regex patterns.',
+        icon: Code,
+        color: 'text-indigo-400',
+        bg: 'bg-indigo-500/10',
+        border: 'border-indigo-500/20',
+        category: 'Development',
+        placeholder: 'Describe the pattern (e.g., Match all valid Gmail addresses)...',
+        buttonText: 'Synthesize Pattern'
+    },
+    {
+        id: 'cover-letter',
+        endpoint: '/api/cover-letter',
+        name: 'Cover Letter Pro',
+        description: 'Create winning cover letters tailored to your dream job.',
+        icon: FileSearch,
+        color: 'text-yellow-400',
+        bg: 'bg-yellow-500/10',
+        border: 'border-yellow-500/20',
+        category: 'Career',
+        placeholder: 'Paste the job description and your key skills here...',
+        buttonText: 'Generate Application'
+    },
+    {
+        id: 'grammar-fix',
+        endpoint: '/api/grammar-fix',
+        name: 'Grammar Coach',
+        description: 'Fix typos, grammar, and elevate your writing style.',
+        icon: RefreshCw,
+        color: 'text-teal-400',
+        bg: 'bg-teal-500/10',
+        border: 'border-teal-500/20',
+        category: 'Content',
+        placeholder: 'Paste your draft text here to make it sound professional...',
+        buttonText: 'Refine Copy'
+    },
+    {
+        id: 'business-validator',
+        endpoint: '/api/business-validator',
+        name: 'Idea Validator',
+        description: 'Analyze your startup idea with pros, cons &amp; audience.',
+        icon: LayoutDashboard,
+        color: 'text-rose-400',
+        bg: 'bg-rose-500/10',
+        border: 'border-rose-500/20',
+        category: 'Business',
+        placeholder: 'Describe your business or app idea in detail...',
+        buttonText: 'Run Analysis'
+    },
+    {
+        id: 'youtube-summarizer',
+        endpoint: '/api/youtube-summarizer',
+        name: 'YouTube Summarizer',
+        description: 'Get instant intelligence and summaries from long YouTube videos.',
+        icon: Video,
+        color: 'text-red-500',
+        bg: 'bg-red-500/10',
+        border: 'border-red-500/20',
+        category: 'Content',
+        placeholder: 'Paste YouTube URL here...',
+        buttonText: 'Extract Insights'
+    },
+    {
+        id: 'webpage-summarizer',
+        endpoint: '/api/webpage-summarizer',
+        name: 'Webpage Summarizer',
+        description: 'TL;DR for any article or website link.',
+        icon: Globe,
+        color: 'text-sky-400',
+        bg: 'bg-sky-500/10',
+        border: 'border-sky-500/20',
+        category: 'Content',
+        placeholder: 'Paste Website URL here...',
+        buttonText: 'Digest Page'
+    },
+    {
+        id: 'tts-gen',
+        endpoint: '/api/tts',
+        name: 'AI Voice Generator',
+        description: 'Convert any text into natural human speech.',
+        icon: Volume2,
+        color: 'text-violet-400',
+        bg: 'bg-violet-500/10',
+        border: 'border-violet-500/20',
+        category: 'Creative',
+        placeholder: 'Enter text to synthesize into speech...',
+        buttonText: 'Synthesize Audio',
+        isAudio: true
+    },
+    {
+        id: 'vision-api',
+        endpoint: '/api/vision',
+        name: 'Vision Analytics',
+        description: 'Understand and analyze any image context (Coming Soon).',
+        icon: ImageIcon,
+        color: 'text-emerald-500',
+        bg: 'bg-emerald-600/10',
+        border: 'border-emerald-600/20',
+        category: 'Creative',
+        placeholder: 'Image analysis context or questions...',
+        buttonText: 'Analyze Frame',
+        isStatic: true
+    }
+];
+
+const categories = ['All', 'Content', 'Development', 'Creative', 'Data', 'Business'];
+
+// Galaxy / Starfield effect moving towards camera
+const MovingStars = () =&gt; {
+    const pointsRef = useRef();
+
+    // Generate random stars
+    const [starPositions] = useState(() =&gt; {
+        const positions = new Float32Array(5000 * 3);
+        for (let i = 0; i &lt; 5000; i++) {
+            positions[i * 3] = (Math.random() - 0.5) * 100;     // x
+            positions[i * 3 + 1] = (Math.random() - 0.5) * 100; // y
+            positions[i * 3 + 2] = (Math.random() - 0.5) * 100; // z
+        }
+        return positions;
+    });
+
+    useFrame((state, delta) =&gt; {
+        if (pointsRef.current) {
+            // Move stars towards camera (z increases)
+            const positions = pointsRef.current.geometry.attributes.position.array;
+            for (let i = 0; i &lt; 5000; i++) {
+                positions[i * 3 + 2] += delta * 20; // Speed of ship
+                if (positions[i * 3 + 2] &gt; 10) {
+                    // Reset far back with random depth to prevent flat walls of stars
+                    positions[i * 3 + 2] = -90 - Math.random() * 50;
+                    // Optional: also randomize X and Y slightly when resetting to prevent visible trails over time
+                    positions[i * 3] = (Math.random() - 0.5) * 100;
+                    positions[i * 3 + 1] = (Math.random() - 0.5) * 100;
+                }
+            }
+            pointsRef.current.geometry.attributes.position.needsUpdate = true;
+
+            // Add slight global rotation for a dynamic steering effect
+            pointsRef.current.rotation.z -= delta * 0.02;
+            pointsRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.1) * 0.1;
+            pointsRef.current.rotation.x = Math.cos(state.clock.elapsedTime * 0.15) * 0.05;
+        }
+    });
+
+    return (
+        &lt;points ref={pointsRef}&gt;
+            &lt;bufferGeometry&gt;
+                &lt;bufferAttribute
+                    attach="attributes-position"
+                    count={starPositions.length / 3}
+                    array={starPositions}
+                    itemSize={3}
+                /&gt;
+            &lt;/bufferGeometry&gt;
+            &lt;pointsMaterial
+                size={0.12}
+                color="#e0e7ff"
+                transparent
+                opacity={0.6}
+                sizeAttenuation
+                depthWrite={false}
+                blending={2} // AdditiveBlending
+            /&gt;
+        &lt;/points&gt;
+    );
+};
+
+// Floating Holographic Texts in the Galaxy
+import { Text } from '@react-three/drei';
+
+const FloatingTexts = () =&gt; {
+    const textGroupRef = useRef();
+
+    // Generate random positions for the texts
+    const [texts] = useState(() =&gt; {
+        const items = [];
+        for (let i = 0; i &lt; 15; i++) {
+            items.push({
+                x: (Math.random() - 0.5) * 40,
+                y: (Math.random() - 0.5) * 40,
+                z: -50 - Math.random() * 100, // Starts far back
+                scale: 1 + Math.random() * 2 // slightly different sizes
+            });
+        }
+        return items;
+    });
+
+    useFrame((state, delta) =&gt; {
+        if (textGroupRef.current) {
+            // Move texts towards camera same as stars
+            textGroupRef.current.children.forEach(child =&gt; {
+                child.position.z += delta * 20;
+                // Fade out/in based on distance
+                if (child.position.z &gt; 5) {
+                    child.position.z = -150 - Math.random() * 50;
+                    child.position.x = (Math.random() - 0.5) * 40;
+                    child.position.y = (Math.random() - 0.5) * 40;
+                }
+            });
+            // Steer effect to match stars
+            textGroupRef.current.rotation.z -= delta * 0.02;
+            textGroupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.1) * 0.1;
+            textGroupRef.current.rotation.x = Math.cos(state.clock.elapsedTime * 0.15) * 0.05;
+        }
+    });
+
+    return (
+        &lt;group ref={textGroupRef}&gt;
+            {texts.map((props, i) =&gt; (
+                &lt;Text
+                    key={i}
+                    position={[props.x, props.y, props.z]}
+                    scale={[props.scale, props.scale, props.scale]}
+                    fontSize={0.6}
+                    color="#4f46e5"
+                    fillOpacity={0.15} // very subtle holographic feel
+                    anchorX="center"
+                    anchorY="middle"
+                    font="https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZJhjp-Ek-_EeA.woff" // Optional proper font
+                    fontWeight={900}
+                &gt;
+                    Gistly.ai
+                &lt;/Text&gt;
+            ))}
+        &lt;/group&gt;
+    );
+};
+
+// The Interactive 3D AI Core (Siri/Bixby Style)
+const BrainCore = () =&gt; {
+    const groupRef = useRef();
+
+    useFrame((state) =&gt; {
+        if (groupRef.current) {
+            groupRef.current.rotation.x = state.clock.getElapsedTime() * 0.2;
+            groupRef.current.rotation.y = state.clock.getElapsedTime() * 0.3;
+            groupRef.current.rotation.z = Math.sin(state.clock.getElapsedTime() * 0.5) * 0.2;
+        }
+    });
+
+    return (
+        &lt;group ref={groupRef} scale={2.4}&gt;
+            {/* Inner Core - Deep Red / Ruby (Glassy) */}
+            &lt;Sphere args={[1.0, 64, 64]}&gt;
+                &lt;MeshDistortMaterial
+                    color="#991b1b"
+                    emissive="#7f1d1d"
+                    emissiveIntensity={1.5}
+                    distort={0.3}
+                    speed={3}
+                    roughness={0}
+                    metalness={1}
+                /&gt;
+            &lt;/Sphere&gt;
+
+            {/* Middle Layer - Deep Purple / Indigo (Glassy) */}
+            &lt;Sphere args={[1.2, 64, 64]}&gt;
+                &lt;MeshDistortMaterial
+                    color="#4c1d95"
+                    emissive="#581c87"
+                    emissiveIntensity={1}
+                    distort={0.4}
+                    speed={4}
+                    transparent
+                    opacity={0.6}
+                    roughness={0}
+                    metalness={1}
+                    blending={2} // AdditiveBlending
+                /&gt;
+            &lt;/Sphere&gt;
+
+            {/* Outer Layer - Deep Electric Blue / Navy (Glassy) */}
+            &lt;Sphere args={[1.4, 64, 64]}&gt;
+                &lt;MeshDistortMaterial
+                    color="#1e3a8a"
+                    emissive="#1e40af"
+                    emissiveIntensity={0.8}
+                    distort={0.6}
+                    speed={2}
+                    transparent
+                    opacity={0.4}
+                    roughness={0}
+                    metalness={1}
+                    blending={2} // AdditiveBlending
+                /&gt;
+            &lt;/Sphere&gt;
+        &lt;/group&gt;
+    );
+};
+
+// The Gistly Voice Assistant (J.A.R.V.I.S Style)
+const GistlyVoiceAssistant = () =&gt; {
+    const [isOpen, setIsOpen] = useState(false);
+    const [isListening, setIsListening] = useState(false);
+    const [transcript, setTranscript] = useState('');
+    const [isSpeaking, setIsSpeaking] = useState(false);
+
+    const speak = (msg) =&gt; {
+        if (!window.speechSynthesis) return;
+        window.speechSynthesis.cancel(); // stop any current speech
+        const utterance = new SpeechSynthesisUtterance(msg);
+        utterance.rate = 1.1; // JARVIS-like speed
+        utterance.pitch = 0.95; // Slightly lower pitch for a sophisticated feel
+
+        utterance.onstart = () =&gt; setIsSpeaking(true);
+        utterance.onend = () =&gt; setIsSpeaking(false);
+
+        window.speechSynthesis.speak(utterance);
+    };
+
+    const toggleAssistant = () =&gt; {
+        if (!isOpen) {
+            setIsOpen(true);
+            setTimeout(() =&gt; {
+                speak("Hi, I'm Gistly. How can I help you today?");
+            }, 500);
+        } else {
+            setIsOpen(false);
+            setIsListening(false);
+            window.speechSynthesis?.cancel();
+        }
+    };
+
+    const handleListen = () =&gt; {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("Your browser does not support Speech Recognition.");
+            return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        recognition.onstart = () =&gt; {
+            setIsListening(true);
+            setTranscript("Listening...");
+        };
+
+        recognition.onresult = (event) =&gt; {
+            const current = event.resultIndex;
+            const text = event.results[current][0].transcript;
+            setTranscript(text);
+            setIsListening(false);
+
+            // Basic logic: if user speaks, AI responds (simplified demo)
+            setTimeout(() =&gt; {
+                speak(`I understood you said: ${text}. I'm processing that on my neural neural core.`);
+            }, 800);
+        };
+
+        recognition.onerror = () =&gt; {
+            setIsListening(false);
+            setTranscript("Error occurred.");
+        };
+
+        recognition.start();
+    };
+
+    return (
+        &lt;div className="fixed bottom-8 right-8 z-[100] flex flex-col items-end"&gt;
+            &lt;AnimatePresence&gt;
+                {isOpen &amp;&amp; (
+                    &lt;motion.div
+                        initial={{ opacity: 0, scale: 0.5, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.5, y: 20 }}
+                        className="bg-black/60 backdrop-blur-2xl border border-indigo-500/20 rounded-3xl p-6 mb-6 w-72 shadow-[0_0_50px_rgba(79,70,229,0.15)] relative overflow-hidden"
+                    &gt;
+                        {/* JARVIS Glow background */}
+                        &lt;div className="absolute inset-0 bg-radial-gradient from-indigo-500/10 to-transparent pointer-events-none" /&gt;
+
+                        &lt;div className="relative z-10"&gt;
+                            &lt;div className="flex items-center gap-3 mb-4"&gt;
+                                &lt;div className={cn(
+                                    "p-2 rounded-full border border-indigo-500/30",
+                                    isSpeaking ? "bg-indigo-500/20 shadow-[0_0_15px_rgba(99,102,241,0.5)]" : "bg-black/40"
+                                )}&gt;
+                                    &lt;Bot className="w-5 h-5 text-indigo-400" /&gt;
+                                &lt;/div&gt;
+                                &lt;div&gt;
+                                    &lt;h4 className="text-white font-bold text-sm tracking-wide"&gt;GISTLY ASSISTANT&lt;/h4&gt;
+                                    &lt;p className="text-[10px] text-indigo-400 font-mono tracking-widest uppercase opacity-70"&gt;Core 2.0&lt;/p&gt;
+                                &lt;/div&gt;
+                            &lt;/div&gt;
+
+                            &lt;div className="bg-white/5 rounded-2xl p-4 mb-4 min-h-[80px] flex items-center justify-center text-center"&gt;
+                                &lt;p className="text-zinc-400 text-xs italic leading-relaxed"&gt;
+                                    {transcript || "Click the mic to speak with Gistly"}
+
+
+... [ CONTENT TRUNCATED TO FIRST 500 LINES FOR PRINTING ] ...</code></pre>
+<h2>Frontend (NewsPanel.jsx) - Core Feed Logic (src/NewsPanel.jsx)</h2>
+<pre><code class="language-javascript">import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, ExternalLink, Share2, Sparkles, Loader2, RefreshCw, Radio, Image as ImageIcon, Trophy, Activity, Globe2, Target, Zap } from 'lucide-react';
+import { twMerge } from 'tailwind-merge';
+import { clsx } from 'clsx';
+
+function cn(...inputs) {
+    return twMerge(clsx(inputs));
+}
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+export default function NewsPanel({ isOpen, onClose }) {
+    const [activeTab, setActiveTab] = useState('global'); // 'global', 'sports', 'scores', 'markets'
+    const [news, setNews] = useState([]);
+    const [sportsNews, setSportsNews] = useState([]);
+    const [scores, setScores] = useState([]);
+    const [markets, setMarkets] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    // AI Summarizer &amp; Predictor States
+    const [activeArticle, setActiveArticle] = useState(null);
+    const [summaryResult, setSummaryResult] = useState('');
+    const [summaryLoading, setSummaryLoading] = useState(false);
+    const [activeMatch, setActiveMatch] = useState(null);
+    const [activeMarket, setActiveMarket] = useState(null);
+    const [predictionResult, setPredictionResult] = useState('');
+    const [predictionLoading, setPredictionLoading] = useState(false);
+
+    const fetchData = async (force = false) =&gt; {
+        setLoading(true);
+        setError('');
+        try {
+            if (activeTab === 'global' &amp;&amp; (news.length === 0 || force)) {
+                const resp = await axios.get(`${API_BASE_URL}/api/news`);
+                setNews(resp.data.articles || []);
+            } else if (activeTab === 'sports' &amp;&amp; (sportsNews.length === 0 || force)) {
+                const resp = await axios.get(`${API_BASE_URL}/api/news/sports`);
+                setSportsNews(resp.data.articles || []);
+            } else if (activeTab === 'scores' &amp;&amp; (scores.length === 0 || force)) {
+                const resp = await axios.get(`${API_BASE_URL}/api/scores/live`);
+                setScores(resp.data.matches || []);
+            } else if (activeTab === 'markets' &amp;&amp; (markets.length === 0 || force)) {
+                const resp = await axios.get(`${API_BASE_URL}/api/markets/trending`);
+                setMarkets(resp.data.markets || []);
+            }
+        } catch (err) {
+            console.error(err);
+            setError('Failed to gather the latest streams. Backend API might be updating or unreachable.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() =&gt; {
+        if (isOpen) {
+            fetchData();
+        }
+    }, [isOpen, activeTab]);
+
+    const handleSummarize = async (article) =&gt; {
+        setActiveArticle(article);
+        setSummaryLoading(true);
+        setSummaryResult('');
+        try {
+            const resp = await axios.post(`${API_BASE_URL}/api/news/summarize`, {
+                content: article.link,
+                context: article.title
+            });
+            setSummaryResult(resp.data.result);
+        } catch (err) {
+            setSummaryResult("Failed to decrypt and summarize this article. The source might be blocking our AI.");
+        } finally {
+            setSummaryLoading(false);
+        }
+    };
+
+    const handlePredictMatch = async (match) =&gt; {
+        setActiveMatch(match);
+        setPredictionLoading(true);
+        setPredictionResult('');
+        try {
+            const resp = await axios.post(`${API_BASE_URL}/api/scores/predict`, {
+                content: `Match: ${match.team1} vs ${match.team2}. Tournament: ${match.tournament}. Score: ${match.team1} (${match.score1}) - ${match.team2} (${match.score2}). Live Context: ${match.context}. Target Status: ${match.status}.`
+            });
+            setPredictionResult(resp.data.result);
+        } catch (err) {
+            setPredictionResult("Failed to calculate AI prediction. Probability engine is currently offline.");
+        } finally {
+            setPredictionLoading(false);
+        }
+    };
+
+    const handleAnalyzeMarket = async (market) =&gt; {
+        setActiveMarket(market);
+        setPredictionLoading(true);
+        setPredictionResult('');
+        try {
+            const resp = await axios.post(`${API_BASE_URL}/api/markets/analyze`, {
+                content: market.symbol
+            });
+            setPredictionResult(resp.data.result);
+        } catch (err) {
+            setPredictionResult("Failed to gather AI Financial Analysis. Try again later.");
+        } finally {
+            setPredictionLoading(false);
+        }
+    };
+
+    const handleShare = (platform, textToShare, urlToShare) =&gt; {
+        if (!textToShare) return;
+        const encodedText = encodeURIComponent(textToShare + "\n\nShared via https://gistly.site");
+        const encodedUrl = encodeURIComponent(urlToShare || "https://gistly.site");
+
+        let shareUrl = "";
+        switch (platform) {
+            case 'twitter':
+                shareUrl = `https://twitter.com/intent/tweet?text=${encodedText}`;
+                break;
+            case 'facebook':
+                shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&amp;quote=${encodedText}`;
+                break;
+            case 'whatsapp':
+                shareUrl = `https://api.whatsapp.com/send?text=${encodedText}`;
+                break;
+            default:
+                break;
+        }
+        if (shareUrl) window.open(shareUrl, '_blank');
+    };
+
+    const renderNewsList = (dataList) =&gt; {
+        if (loading &amp;&amp; dataList.length === 0) {
+            return (
+                &lt;div className="flex flex-col items-center justify-center h-full text-zinc-500 gap-4 mt-20"&gt;
+                    &lt;Loader2 className="w-8 h-8 animate-spin text-red-400" /&gt;
+                    &lt;span className="text-xs uppercase tracking-[0.2em] font-mono"&gt;Intercepting Signals...&lt;/span&gt;
+                &lt;/div&gt;
+            );
+        }
+
+        if (error) {
+            return (
+                &lt;div className="text-center text-red-400 text-xs p-5 bg-red-500/10 rounded-xl border border-red-500/20 mt-10"&gt;
+                    {error}
+                &lt;/div&gt;
+            );
+        }
+
+        return (
+            &lt;div className="space-y-4 pb-24"&gt;
+                {dataList.map((item, idx) =&gt; (
+                    &lt;div key={idx} className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 hover:border-red-500/30 transition-all group"&gt;
+                        &lt;div className="text-[10px] text-red-400 font-bold tracking-widest uppercase mb-2 flex items-center gap-2"&gt;
+                            &lt;span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"&gt;&lt;/span&gt;
+                            {item.source}
+                        &lt;/div&gt;
+                        &lt;h3 className="text-sm font-semibold text-white leading-relaxed mb-3 group-hover:text-red-300 transition-colors"&gt;
+                            {item.title}
+                        &lt;/h3&gt;
+                        &lt;div className="flex items-center justify-between mt-4 text-xs"&gt;
+                            &lt;a href={item.link} target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-white flex items-center gap-1 transition-colors"&gt;
+                                &lt;ExternalLink className="w-3.5 h-3.5" /&gt; Source
+                            &lt;/a&gt;
+                            &lt;button
+                                onClick={() =&gt; handleSummarize(item)}
+                                className="bg-indigo-500/10 hover:bg-indigo-500 hover:text-white text-indigo-400 border border-indigo-500/20 px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all shadow-[0_0_10px_rgba(99,102,241,0.1)] hover:shadow-[0_0_20px_rgba(99,102,241,0.4)] flex items-center gap-1.5"
+                            &gt;
+                                &lt;Sparkles className="w-3.5 h-3.5" /&gt; Gistify
+                            &lt;/button&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                ))}
+            &lt;/div&gt;
+        );
+    };
+
+    const renderScoresList = () =&gt; {
+        if (loading &amp;&amp; scores.length === 0) {
+            return (
+                &lt;div className="flex flex-col items-center justify-center h-full text-zinc-500 gap-4 mt-20"&gt;
+                    &lt;Loader2 className="w-8 h-8 animate-spin text-emerald-400" /&gt;
+                    &lt;span className="text-xs uppercase tracking-[0.2em] font-mono"&gt;Syncing Scoreboards...&lt;/span&gt;
+                &lt;/div&gt;
+            );
+        }
+
+        return (
+            &lt;div className="space-y-4 pb-24"&gt;
+                {scores.map((match, idx) =&gt; (
+                    &lt;div key={idx} className="bg-gradient-to-b from-zinc-900 to-black border border-white/10 rounded-2xl p-5 hover:border-emerald-500/50 transition-all group relative overflow-hidden"&gt;
+                        {/* Glow effect internally */}
+                        &lt;div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"&gt;&lt;/div&gt;
+
+                        &lt;div className="flex justify-between items-center mb-3"&gt;
+                            &lt;div className="flex items-center gap-2"&gt;
+                                &lt;Trophy className="w-4 h-4 text-emerald-400" /&gt;
+                                &lt;span className="text-[10px] font-bold text-zinc-400 tracking-wider uppercase"&gt;{match.tournament}&lt;/span&gt;
+                            &lt;/div&gt;
+                            {match.live &amp;&amp; (
+                                &lt;div className="px-2 py-0.5 bg-red-500/20 border border-red-500/50 rounded flex items-center gap-1.5"&gt;
+                                    &lt;span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"&gt;&lt;/span&gt;
+                                    &lt;span className="text-[9px] font-bold text-red-500 uppercase tracking-widest"&gt;Live&lt;/span&gt;
+                                &lt;/div&gt;
+                            )}
+                        &lt;/div&gt;
+
+                        {/* Teams &amp; Scores */}
+                        &lt;div className="space-y-3 mt-4"&gt;
+                            &lt;div className="flex justify-between items-center"&gt;
+                                &lt;span className="text-sm font-bold text-white tracking-wide"&gt;{match.team1}&lt;/span&gt;
+                                &lt;span className="text-sm font-mono text-emerald-300 font-bold bg-emerald-500/10 px-2 rounded"&gt;{match.score1}&lt;/span&gt;
+                            &lt;/div&gt;
+                            &lt;div className="flex justify-between items-center"&gt;
+                                &lt;span className="text-sm font-bold text-zinc-300 tracking-wide"&gt;{match.team2}&lt;/span&gt;
+                                &lt;span className="text-sm font-mono text-emerald-300/70 font-bold"&gt;{match.score2}&lt;/span&gt;
+                            &lt;/div&gt;
+                        &lt;/div&gt;
+
+                        &lt;div className="mt-4 pt-4 border-t border-white/5 flex flex-col gap-3"&gt;
+                            &lt;div className="text-xs text-zinc-400 font-medium leading-relaxed border-l-2 border-emerald-500/30 pl-2"&gt;
+                                {match.status}
+                            &lt;/div&gt;
+
+                            &lt;button
+                                onClick={() =&gt; handlePredictMatch(match)}
+                                className="w-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(16,185,129,0.1)] hover:shadow-[0_0_25px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2"
+                            &gt;
+                                &lt;Zap className="w-4 h-4" /&gt; AI Win Probability Predictor
+                            &lt;/button&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                ))}
+            &lt;/div&gt;
+        );
+    };
+
+    const renderMarketsList = () =&gt; {
+        if (loading &amp;&amp; markets.length === 0) {
+            return (
+                &lt;div className="flex flex-col items-center justify-center h-full text-zinc-500 gap-4 mt-20"&gt;
+                    &lt;Loader2 className="w-8 h-8 animate-spin text-purple-400" /&gt;
+                    &lt;span className="text-xs uppercase tracking-[0.2em] font-mono"&gt;Loading Tickers...&lt;/span&gt;
+                &lt;/div&gt;
+            );
+        }
+
+        return (
+
+
+... [ CONTENT TRUNCATED TO FIRST 250 LINES FOR PRINTING ] ...</code></pre>
+<h2>Tailwind Config (tailwind.config.js)</h2>
+<pre><code class="language-javascript">/** @type {import('tailwindcss').Config} */
+export default {
+    content: [
+        "./index.html",
+        "./src/**/*.{js,ts,jsx,tsx}",
+    ],
+    theme: {
+        extend: {
+            fontFamily: {
+                sans: ['Plus Jakarta Sans', 'sans-serif'],
+                display: ['Outfit', 'sans-serif'],
+            },
+            colors: {
+                primary: {
+                    50: '#f0f4ff',
+                    100: '#e0e9ff',
+                    200: '#c1d4ff',
+                    300: '#92b3ff',
+                    400: '#5c87ff',
+                    500: '#335eff',
+                    600: '#1e3eff',
+                    700: '#142ccf',
+                    800: '#1326a7',
+                    900: '#162883',
+                    950: '#11184f',
+                },
+            },
+            animation: {
+                'gradient-x': 'gradient-x 15s ease infinite',
+                'gradient-y': 'gradient-y 15s ease infinite',
+                'gradient-xy': 'gradient-xy 15s ease infinite',
+            },
+            keyframes: {
+                'gradient-y': {
+                    '0%, 100%': { 'background-size': '400% 400%', 'background-position': 'center top' },
+                    '50%': { 'background-size': '200% 200%', 'background-position': 'center bottom' },
+                },
+                'gradient-x': {
+                    '0%, 100%': { 'background-size': '200% 200%', 'background-position': 'left center' },
+                    '50%': { 'background-size': '200% 200%', 'background-position': 'right center' },
+                },
+                'gradient-xy': {
+                    '0%, 100%': { 'background-size': '400% 400%', 'background-position': 'left center' },
+                    '50%': { 'background-size': '200% 200%', 'background-position': 'right center' },
+                }
+            }
+        },
+    },
+    plugins: [],
+}
+</code></pre>
+<h2>Frontend Styling (index.css) (src/index.css)</h2>
+<pre><code class="language-css">@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 0 0% 0%;
+  --foreground: 210 40% 98%;
+}
+
+body {
+  @apply font-sans antialiased bg-black text-white;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(51, 94, 255, 0.15) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(138, 43, 226, 0.15) 0px, transparent 50%),
+    radial-gradient(at 50% 100%, rgba(0, 255, 127, 0.1) 0px, transparent 50%);
+  background-attachment: fixed;
+}
+
+.glass-card {
+  @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden;
+}
+
+.glass-button {
+  @apply bg-white/10 hover:bg-white/20 backdrop-blur-lg border border-white/10 rounded-2xl transition-all duration-300 active:scale-95;
+}
+
+.gradient-text {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-500 to-emerald-400 animate-gradient-x;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-white/10 rounded-full hover:bg-white/20 transition-all;
+}
+</code></pre>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-jsx.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
+</body>
+</html>

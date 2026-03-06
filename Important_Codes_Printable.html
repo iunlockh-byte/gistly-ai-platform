@@ -1,0 +1,3394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Gistly.site - Important Codes</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-twilight.min.css" rel="stylesheet" />
+    <style>
+        body { font-family: Arial, sans-serif; background: white; margin: 40px; }
+        h1 { text-align: center; color: #333; }
+        h2 { border-bottom: 2px solid #555; padding-bottom: 5px; margin-top: 40px; page-break-before: always; }
+        h2:first-of-type { page-break-before: auto; }
+        pre { background: #141414; border-radius: 8px; padding: 15px; font-size: 11px; white-space: pre-wrap; word-wrap: break-word; }
+        @media print {
+            body { font-family: monospace; font-size: 10pt; margin: 0; background: white; }
+            pre { padding: 10px; background: white; color: black; border: 1px solid #ccc; font-size: 8pt; white-space: pre-wrap; word-wrap: break-word; }
+            h2 { page-break-before: always; border-bottom: 1px solid black; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Gistly.site - Important Codes (API & Components)</h1>
+    <p style="text-align: center;">Press <b>Ctrl + P</b> (or Cmd + P) to Print and save as PDF.</p>
+<h2>Backend (API) Main Code (backend/main.py)</h2>\n<pre><code class="language-python">import os
+import base64
+import requests
+import json
+import re
+import urllib3
+import time
+import urllib.parse
+import sqlite3
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+import google.generativeai as genai
+from apify_client import ApifyClient
+from groq import Groq
+from bs4 import BeautifulSoup
+from gtts import gTTS
+import tempfile
+from dotenv import load_dotenv
+import feedparser
+import yfinance as yf
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from lemonsqueezy import LemonSqueezy
+
+load_dotenv()
+
+from supabase import create_client, Client
+
+# Database Initialization (SQLite removed, using Supabase)
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+supabase: Client | None = None
+if SUPABASE_URL and SUPABASE_KEY:
+    try:
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        print("Successfully connected to Supabase")
+    except Exception as e:
+        print(f"Failed to initialize Supabase client: {e}")
+else:
+    print("WARNING: Supabase credentials not found. Database features will be disabled.")
+
+# Configure the Gemini API
+API_KEY = os.getenv("GEMINI_API_KEY")
+if not API_KEY:
+    # We won't crash, but endpoints will fail with a helpful message
+    print("WARNING: GEMINI_API_KEY not found in environment variables")
+
+# Configure Apify Client
+APIFY_TOKEN = os.getenv("APIFY_API_TOKEN")
+
+# Configure Groq Client (Fallback)
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+# Configure Hugging Face Token for Image Generation
+HF_TOKEN = os.getenv("HF_TOKEN")
+LEONARDO_API_KEY = os.getenv("LEONARDO_API_KEY")  # High-End Backup
+if not HF_TOKEN:
+    print("WARNING: HF_TOKEN not found in environment variables.")
+
+# Initialize clients
+genai.configure(api_key=API_KEY)
+
+# Configure Lemon Squeezy
+LEMON_SQUEEZY_API_KEY = os.getenv("LEMON_SQUEEZY_API_KEY")
+LEMON_SQUEEZY_STORE_ID = os.getenv("LEMON_SQUEEZY_STORE_ID")
+
+if LEMON_SQUEEZY_API_KEY:
+    ls = LemonSqueezy(LEMON_SQUEEZY_API_KEY)
+else:
+    ls = None
+    print("WARNING: LEMON_SQUEEZY_API_KEY not found. Payments disabled.")
+    
+# Gistly URL for Redirects
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+model = genai.GenerativeModel("gemini-flash-latest")
+apify_client = ApifyClient(APIFY_TOKEN) if APIFY_TOKEN else None
+groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
+
+app = FastAPI(
+    title="Gistly Multi-Tool API",
+    description="Backend for Gistly AI's suite of developer and creator tools.",
+    version="2.0.0",
+)
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class AIRequest(BaseModel):
+    content: str
+    context: str = ""
+
+
+@app.get("/")
+async def status():
+    return {"status": "online", "model": "gemini-1.5-pro"}
+
+
+async def ask_gemini(prompt: str):
+    """Internal function to call Gemini API."""
+    if not API_KEY:
+        raise Exception("Gemini API Key is not configured.")
+    response = model.generate_content(prompt)
+    if not response.text:
+        raise Exception("Gemini returned an empty response.")
+    return response.text
+
+
+async def ask_groq(prompt: str):
+    """Internal function to call Groq API (Fallback)."""
+    if not groq_client:
+        raise Exception("Groq API Key is not configured.")
+    completion = groq_client.chat.completions.create(
+        model="llama3-8b-8192",
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return completion.choices[0].message.content
+
+
+async def generate_ai_response(prompt: str):
+    """Unified AI interface with automatic fallback across providers."""
+    errors = []
+
+    # Provider 1: Gemini (Primary)
+    try:
+        return await ask_gemini(prompt)
+    except Exception as e:
+        error_msg = f"Gemini failed: {str(e)}"
+        print(error_msg)
+        errors.append(error_msg)
+
+    # Provider 2: Groq (Fallback)
+    try:
+        if groq_client:
+            print("Attempting fallback to Groq...")
+            return await ask_groq(prompt)
+    except Exception as e:
+        error_msg = f"Groq fallback failed: {str(e)}"
+        print(error_msg)
+        errors.append(error_msg)
+
+    # If all providers fail
+    raise HTTPException(
+        status_code=500,
+        detail=f"All AI providers failed. Diagnostics: {'; '.join(errors)}",
+    )
+
+
+@app.post("/api/summarize")
+async def summarize(req: AIRequest):
+    prompt = f"Summarize the following text concisely. Focus on the key takeaways:\n\n{req.content}"
+    result = await generate_ai_response(prompt)
+    return {"result": result}
+
+
+@app.post("/api/debug")
+async def debug_code(req: AIRequest):
+    prompt = (
+        f"Identify bugs and provide a fix for the following code. "
+        f"Explain why the bug occurred.\n\nCode:\n{req.content}"
+    )
+    result = await generate_ai_response(prompt)
+    return {"result": result}
+
+
+@app.post("/api/humanize")
+async def humanize(req: AIRequest):
+    prompt = (
+        f"Rewrite the following text to sound more natural, human, and conversational. "
+        f"Avoid generic AI patterns while maintaining the original meaning:\n\n{req.content}"
+    )
+    result = await generate_ai_response(prompt)
+    return {"result": result}
+
+
+@app.post("/api/resume-optimize")
+async def optimize_resume(req: AIRequest):
+    prompt = (
+        f"Analyze this resume content and suggest optimizations for ATS (Applicant Tracking Systems). "
+        f"Highlight keyword improvements and formatting suggestions:\n\n{req.content}"
+    )
+    result = await generate_ai_response(prompt)
+    return {"result": result}
+
+
+@app.post("/api/sql-generate")
+async def generate_sql(req: AIRequest):
+    prompt = (
+        f"Generate a well-optimized SQL query based on this natural language description. "
+        f"Assume standard relational database schemas:\n\n{req.content}"
+    )
+    result = await generate_ai_response(prompt)
+    return {"result": result}
+
+
+@app.post("/api/social-post")
+async def generate_social(req: AIRequest):
+    prompt = (
+        f"Generate highly engaging social media posts for Twitter, LinkedIn, and Instagram "
+        f"based on this topic or content:\n\n{req.content}"
+    )
+    result = await generate_ai_response(prompt)
+    return {"result": result}
+
+
+@app.post("/api/email-gen")
+async def generate_email(req: AIRequest):
+    prompt = (
+        f"Write a professional and highly effective email based on the following context. "
+        f"Ensure the tone is appropriate for a business setting:\n\n{req.content}"
+    )
+    result = await generate_ai_response(prompt)
+    return {"result": result}
+
+
+@app.post("/api/regex-gen")
+async def generate_regex(req: AIRequest):
+    prompt = (
+        f"Create a Regular Expression (Regex) for the following natural language description. "
+        f"Provide the regex pattern and a brief explanation of how it works:\n\n{req.content}"
+    )
+    result = await generate_ai_response(prompt)
+    return {"result": result}
+
+
+@app.post("/api/cover-letter")
+async def generate_cover_letter(req: AIRequest):
+    prompt = (
+        f"Write a compelling and professional cover letter based on the following details "
+        f"(job description, personal experience, etc.). Highlight key strengths:\n\n{req.content}"
+    )
+    result = await generate_ai_response(prompt)
+    return {"result": result}
+
+
+@app.post("/api/grammar-fix")
+async def fix_grammar(req: AIRequest):
+    prompt = (
+        f"Act as a professional proofreader. Fix any grammar, spelling, or punctuation errors "
+        f"in the following text. Also, suggest improvements to make it sound more professional:\n\n{req.content}"
+    )
+    result = await generate_ai_response(prompt)
+    return {"result": result}
+
+
+@app.post("/api/business-validator")
+async def validate_business(req: AIRequest):
+    prompt = (
+        f"Act as an expert startup advisor. Analyze the following business idea. "
+        f"Provide a structured report including: 1) Pros, 2) Cons, 3) Target Audience, "
+        f"and 4) Competitive Analysis:\n\n{req.content}"
+    )
+    result = await generate_ai_response(prompt)
+    return {"result": result}
+
+
+@app.post("/api/blog-gen")
+async def generate_blog(req: AIRequest):
+    prompt = (
+        f"Write a comprehensive, engaging, and SEO-optimized blog post based on the following topic or outline. "
+        f"Include an engaging title, introduction, body paragraphs with headings, and a conclusion:\n\n{req.content}"
+    )
+    result = await generate_ai_response(prompt)
+    return {"result": result}
+
+
+@app.post("/api/youtube-summarizer")
+async def summarize_youtube(req: AIRequest):
+    if not apify_client:
+        raise HTTPException(
+            status_code=500,
+            detail="APIFY_API_TOKEN not found. Please add it to your .env file to enable YouTube summaries.",
+        )
+
+    try:
+        url = req.content.strip()
+
+        # Call Apify Actor
+        # Using streamers/youtube-scraper which is highly reliable
+        run_input = {
+            "downloadSubtitles": True,
+            "saveSubsToItems": True,
+            "startUrls": [{"url": url}],
+            "maxResults": 1,
+        }
+
+        # Run the actor and wait for it to finish
+        run = apify_client.actor("streamers/youtube-scraper").call(run_input=run_input)
+        if not run:
+            raise Exception("Apify actor run failed to return data.")
+
+        transcript_parts: list[str] = []
+        # Fetch results from the dataset
+        for item in apify_client.dataset(run["defaultDatasetId"]).iterate_items():
+            if "transcript" in item:
+                transcript_parts.append(str(item.get("transcript", "")))
+                break
+            elif "text" in item and item["text"]:
+                transcript_parts.append(str(item.get("text", "")) + " ")
+
+        transcript_text = "".join(transcript_parts)
+
+        if not transcript_text:
+            raise HTTPException(
+                status_code=400,
+                detail="Could not retrieve transcript. Ensure the video has captions available.",
+            )
+
+        prompt = (
+            f"Please provide a comprehensive summary with key takeaways of this YouTube video based on its transcript. "
+            f"Here is the transcript:\n\n{str(transcript_text)[:100000]}"
+        )
+        result = await generate_ai_response(prompt)
+        return {"result": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Apify Error: {str(e)}")
+
+
+@app.post("/api/generate-image")
+async def generate_image_api(req: AIRequest):
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+    # Phase 1: Prompt Optimization
+    try:
+        enhancer_prompt = f"Act as a professional image prompt engineer. Translate if needed and expand this to a detailed 1024x1024 safe stable diffusion prompt: {req.content}. Respond ONLY with the prompt itself, without any conversational filler or preambles."
+        raw_prompt = await generate_ai_response(enhancer_prompt)
+        prompt = raw_prompt.strip()
+    except Exception:
+        prompt = req.content.strip()
+
+    prompt_clean = re.sub(r"[^\x00-\x7f]", r"", prompt)
+    prompt_encoded = urllib.parse.quote(prompt_clean[:500])
+    errors = []
+
+    session = requests.Session()
+
+    # Provider Hierarchy: Hugging Face (New Router) -&gt; Airforce/Mirror (Failover)
+    providers: list[dict[str, Any]] = []
+
+    # Add Hugging Face nodes if token is available
+    if HF_TOKEN:
+        hf_models = [
+            "black-forest-labs/FLUX.1-schnell",
+            "stabilityai/sdxl-turbo",
+            "stabilityai/stable-diffusion-xl-base-1.0",
+            "runwayml/stable-diffusion-v1-5",
+        ]
+        for m_id in hf_models:
+            providers.append(
+                {
+                    "name": f"Hugging Face ({m_id.split('/')[-1]})",
+                    # Using the new router endpoint to avoid 410 Gone
+                    "url": f"https://router.huggingface.co/hf-inference/models/{m_id}",
+                    "type": "hf",
+                    "headers": {"Authorization": f"Bearer {HF_TOKEN}"},
+                }
+            )
+
+    # Fallback nodes (Mirrors and Aggregators)
+    providers.extend(
+        [
+            {
+                "name": "Leonardo.ai (Premium Cluster)",
+                "type": "leonardo",
+                "key": LEONARDO_API_KEY,
+            },
+            {
+                "name": "Airforce SDXL (Global)",
+                "url": f"https://api.airforce/v1/image-generation?model=stable-diffusion-xl&amp;prompt={prompt_encoded}",
+                "type": "direct",
+                "verify": True,
+            },
+            {
+                "name": "Pollinations High-Stability",
+                "url": f"https://image.pollinations.ai/prompt/{prompt_encoded}?width=1024&amp;height=1024&amp;nologo=true&amp;model=flux",
+                "type": "direct",
+                "verify": True,
+            },
+        ]
+    )
+
+    for provider in providers:
+        try:
+            print(f"Protocol [{provider['name']}] Synchronization...")
+            content: bytes | None = None
+
+            if provider["type"] == "hf":
+                # Hugging Face Inference Call - Dual Endpoint Strategy
+                payload = {"inputs": prompt}
+                endpoints = [
+                    str(provider.get("url", "")),  # New Router
+                    str(provider.get("url", "")).replace(
+                        "router.huggingface.co/hf-inference",
+                        "api-inference.huggingface.co",
+                    ),  # Legacy Fallback
+                ]
+
+                last_response = None
+                for ep_url in endpoints:
+                    try:
+                        response = session.post(
+                            ep_url,
+                            headers=provider.get("headers", {}),
+                            json=payload,
+                            timeout=60,
+                        )
+                        if response.status_code == 200:
+                            last_response = response
+                            break
+                        if response.status_code == 503:
+                            print(f"Model Loading on {ep_url}. Waiting 8s...")
+                            time.sleep(8)
+                            response = session.post(
+                                ep_url,
+                                headers=provider.get("headers", {}),
+                                json=payload,
+                                timeout=60,
+                            )
+                            if response.status_code == 200:
+                                last_response = response
+                                break
+                    except Exception:
+                        continue
+
+                if not last_response:
+                    raise Exception("Hugging Face failed all endpoint attempts.")
+
+                content = last_response.content
+
+            elif provider["type"] == "leonardo":
+                provider_key = provider.get("key")
+                if not provider_key:
+                    raise Exception("Leonardo API Key missing.")
+
+                leo_headers = {
+                    "accept": "application/json",
+                    "content-type": "application/json",
+                    "authorization": f"Bearer {provider_key}",
+                }
+
+                # Start Generation
+                start_url = "https://cloud.leonardo.ai/api/rest/v1/generations"
+                payload = {
+                    "height": 512,
+                    "width": 512,
+                    "prompt": prompt,
+                    "num_images": 1,
+                }
+                response = session.post(
+                    start_url, json=payload, headers=leo_headers, timeout=30
+                )
+                gen_id = response.json().get("sdGenerationJob", {}).get("generationId")
+
+                if not gen_id:
+                    raise Exception("Leonardo failed to initiate job.")
+
+                # Poll for Result
+                poll_url = f"https://cloud.leonardo.ai/api/rest/v1/generations/{gen_id}"
+                for _ in range(10):  # Max 30 seconds
+                    time.sleep(3)
+                    resp = session.get(poll_url, headers=leo_headers)
+                    images = (
+                        resp.json()
+                        .get("generations_by_pk", {})
+                        .get("generated_images", [])
+                    )
+                    if images:
+                        target_url = images[0].get("url")
+                        img_resp = session.get(target_url, timeout=30)
+                        content = img_resp.content
+                        break
+
+                if not content:
+                    raise Exception("Leonardo job timed out.")
+
+            elif provider["type"] == "direct":
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+                    "Accept": "image/*",
+                    "Referer": "https://www.bing.com/",
+                }
+                provider_url = str(provider.get("url", ""))
+                provider_verify = bool(provider.get("verify", True))
+                response = session.get(
+                    provider_url,
+                    headers=headers,
+                    timeout=40,
+                    verify=provider_verify,
+                    allow_redirects=True,
+                )
+                response.raise_for_status()
+                content = response.content
+
+            # Binary Integrity Cluster Check
+            if not content or len(content) &lt; 5000:
+                raise Exception("Provider payload too small/empty.")
+
+            # Check for Image Magic Bytes (Flexible)
+            signature = content[:10]
+            is_image = (
+                signature.startswith(b"\xff\xd8")  # JPG
+                or signature.startswith(b"\x89PNG")  # PNG
+                or signature.startswith(b"RIFF")  # WebP
+                or signature.startswith(b"GIF")  # GIF
+            )
+
+            if not is_image:
+                # If it's a JSON response from an API that returns a URL (like Hercai)
+                try:
+                    data = json.loads(content)
+                    if "url" in data:
+                        resp = session.get(data["url"], timeout=30)
+                        content = resp.content
+                    else:
+                        raise Exception("Not an image and no URL in JSON.")
+                except Exception:
+                    raise Exception(
+                        "Binary signature mismatch (Likely Cloudflare Challenge/HTML)."
+                    )
+
+            encoded_image = base64.b64encode(content).decode("utf-8")
+            print(f"Synthesis [{provider['name']}] SUCCESSFUL.")
+            return {"result": encoded_image, "is_base64": True}
+
+        except Exception as e:
+            print(f"Failover Protocol: {provider['name']} - {str(e)[:150]}")
+            errors.append(f"{provider['name']} ({str(e)[:40]})")
+            time.sleep(2)  # Throttle before next node
+            continue
+
+    raise HTTPException(
+        status_code=500,
+        detail=f"Global synthesis failure. Cluster exhausted. Logs: {'; '.join(errors)}",
+    )
+
+
+@app.post("/api/webpage-summarizer")
+async def summarize_webpage(req: AIRequest):
+    try:
+        url = req.content.strip()
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+
+        soup = BeautifulSoup(response.content, "html.parser")
+
+        # Extract text from p, h1, h2, h3, li
+        texts = soup.find_all(["p", "h1", "h2", "h3", "li"])
+        content = " ".join([t.get_text() for t in texts])
+
+        if not content.strip():
+            return {"result": "Could not extract readable text from this webpage."}
+
+        prompt = (
+            f"Please provide a clear and concise summary of the following webpage content. "
+            f"Highlight the main points and key takeaways:\n\n{content[:100000]}"
+        )
+        result = await generate_ai_response(prompt)
+        return {"result": result}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to fetch webpage: {str(e)}"
+        )
+
+
+@app.post("/api/tts")
+async def generate_speech(req: AIRequest):
+    try:
+        text = req.content.strip()
+        if not text:
+            raise HTTPException(status_code=400, detail="Text is required for TTS")
+
+        tts = gTTS(text=text, lang="en", slow=False)
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as fp:
+            temp_path = fp.name
+
+        tts.save(temp_path)
+
+        with open(temp_path, "rb") as audio_file:
+            encoded_audio = base64.b64encode(audio_file.read()).decode("utf-8")
+
+        os.remove(temp_path)
+
+        return {"result": encoded_audio, "is_audio": True}
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to generate speech: {str(e)}"
+        )
+
+
+class WorkflowSaveRequest(BaseModel):
+    id: str
+    user_id: str
+    name: str = "Untitled Workflow"
+    nodes: List[Any]
+
+
+@app.post("/api/workflows/save")
+async def save_workflow(req: WorkflowSaveRequest):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database connection not available")
+        
+    try:
+        data_json = json.dumps(req.nodes)
+        
+        # In Supabase, upsert handles both INSERT and UPDATE based on primary key
+        response = supabase.table("workflows").upsert({
+            "id": req.id,
+            "user_id": req.user_id,
+            "name": req.name,
+            "data": data_json
+        }).execute()
+        
+        return {"status": "success", "message": "Workflow saved successfully.", "data": response.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+
+@app.get("/api/workflows/{user_id}")
+async def list_workflows(user_id: str):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database connection not available")
+        
+    try:
+        response = supabase.table("workflows") \
+            .select("id, name, created_at") \
+            .eq("user_id", user_id) \
+            .order("created_at", desc=True) \
+            .execute()
+            
+        return {"workflows": response.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+
+@app.get("/api/workflow-data/{workflow_id}")
+async def load_workflow(workflow_id: str):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database connection not available")
+        
+    try:
+        response = supabase.table("workflows") \
+            .select("data, name") \
+            .eq("id", workflow_id) \
+            .execute()
+            
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Workflow not found.")
+            
+        workflow = response.data[0]
+        return {"nodes": json.loads(workflow["data"]), "name": workflow["name"]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+
+@app.post("/api/vision")
+async def analyze_image(req: AIRequest):
+    # This is a placeholder for the Vision API as it requires handling file uploads or base64
+    # The frontend will eventually send the image data to this endpoint.
+    # Currently just sending text for testing if we wanted, but full vision needs more logic
+    prompt = (
+        f"You are given an image. Please describe what is in the main focus of the scene. "
+        f"Context provided by user: {req.content}"
+    )
+    result = await generate_ai_response(prompt)
+    return {"result": result}
+
+
+@app.get("/api/news")
+async def get_news_feed():
+    try:
+        # Using Google News RSS for Top Stories globally or technology.
+        # We can mix general news or tech. Let's use general world news for now.
+        url = "https://news.google.com/rss?hl=en-US&amp;gl=US&amp;ceid=US:en"
+        feed = feedparser.parse(url)
+        
+        articles = []
+        for entry in feed.entries[:20]: # Get top 20 news
+            # Some feeds put image in media_content, but google news doesn't usually.
+            # We will just pass title, link, published.
+            articles.append({
+                "title": entry.title,
+                "link": entry.link,
+                "published": entry.get('published', ''),
+                "source": entry.get('source', {}).get('title', 'News Source')
+            })
+            
+        return {"articles": articles}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch news stream: {str(e)}")
+
+@app.get("/api/news/sports")
+async def get_sports_news():
+    try:
+        url = "https://news.google.com/news/rss/headlines/section/topic/SPORTS?hl=en-US&amp;gl=US&amp;ceid=US:en"
+        feed = feedparser.parse(url)
+        
+        articles = []
+        for entry in feed.entries[:20]:
+            articles.append({
+                "title": entry.title,
+                "link": entry.link,
+                "published": entry.get('published', ''),
+                "source": entry.get('source', {}).get('title', 'Sports News')
+            })
+            
+        return {"articles": articles}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch sports stream: {str(e)}")
+
+@app.get("/api/scores/live")
+async def get_live_scores():
+    # Placeholder for a real Sports Data Provider (e.g., Sportmonks, CricAPI)
+    # Returning high-quality simulated data for the Match Center UI demonstration
+    matches = [
+        {
+            "id": "match_001",
+            "sport": "Cricket",
+            "tournament": "T20 World Cup",
+            "team1": "Sri Lanka",
+            "team2": "India",
+            "score1": "175/6 (20.0)",
+            "score2": "142/4 (16.2)",
+            "status": "India need 34 runs in 22 balls",
+            "context": "Sri Lanka batted first and scored 175. India is currently at 142 for 4 in 16.2 overs. Virat Kohli is at the crease.",
+            "live": True
+        },
+        {
+            "id": "match_002",
+            "sport": "Football",
+            "tournament": "Premier League",
+            "team1": "Arsenal",
+            "team2": "Manchester City",
+            "score1": "2",
+            "score2": "1",
+            "status": "78' - 2nd Half",
+            "context": "Arsenal is leading 2-1 against Manchester City. City is pressing hard with 65% possession in the last 10 mins.",
+            "live": True
+        },
+        {
+            "id": "match_003",
+            "sport": "Cricket",
+            "tournament": "Ashes Test Series",
+            "team1": "Australia",
+            "team2": "England",
+            "score1": "350 &amp; 50/1",
+            "score2": "280",
+            "status": "Day 3 - Stumps. AUS lead by 120 runs.",
+            "context": "Australia scored 350 in first innings, England replied with 280. Australia is currently 50/1 in their second innings at Stumps on Day 3.",
+            "live": False
+        }
+    ]
+    return {"matches": matches}
+
+@app.post("/api/scores/predict")
+async def predict_match(req: AIRequest):
+    prompt = (
+        f"You are an expert sports analyst AI for Gistly.site. Calculate the approximate live winning probability for this match "
+        f"based on the current live match context. "
+        f"Provide a short 2-3 sentence analysis of the situation and explicitly state the winning percentages for both teams.\n\n"
+        f"Match Context:\n{req.content}\n"
+    )
+    result = await generate_ai_response(prompt)
+    return {"result": result}
+
+@app.post("/api/news/summarize")
+async def news_summarize(req: AIRequest):
+    try:
+        url = req.content.strip()
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept": "text/html"
+        }
+        # Follow redirects in case of Google News proxy links
+        response = requests.get(url, headers=headers, timeout=15, allow_redirects=True)
+        response.raise_for_status()
+
+        soup = BeautifulSoup(response.content, "html.parser")
+
+        # Basic Article Extraction (trying common tags)
+        texts = soup.find_all(["p", "h1", "h2", "article", "section"])
+        content = " ".join([t.get_text() for t in texts])
+        
+        # Fallback if too short
+        if len(content) &lt; 200:
+             content = req.context # If frontend passed some context like the title
+
+        prompt = (
+            f"You are an expert Social Media AI for 'Gistly.site'. Summarize the following news article into a highly engaging, viral, and easy-to-read social media post format.\n"
+            f"Requirements:\n"
+            f"- Add an attention-grabbing headline (with emojis).\n"
+            f"- Break down the key facts into 3-4 bullet points.\n"
+            f"- Add 3-5 relevant trending #hashtags at the bottom.\n"
+            f"- End the post specifically with: '💡 Summarized via Gistly.site'\n\n"
+            f"News Content to summarize:\n{content[:50000]}"
+        )
+        
+        result = await generate_ai_response(prompt)
+        return {"result": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to process news link: {str(e)}")
+
+@app.get("/api/markets/trending")
+async def get_trending_markets():
+    try:
+        # Get live data for top stocks and crypto
+        symbols = ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'BTC-USD', 'ETH-USD']
+        data = yf.download(symbols, period="2d", group_by='ticker')
+        
+        market_cards = []
+        for sym in symbols:
+            try:
+                if sym in data:
+                    hist = data[sym]
+                    if not hist.empty and len(hist) &gt;= 2:
+                        # Sometimes yf.download returns multi-index columns nicely, other times flat depending on how many tickers
+                        # Let's handle it safely.
+                        current_close = float(hist['Close'].iloc[-1])
+                        prev_close = float(hist['Close'].iloc[-2])
+                        change_percent = ((current_close - prev_close) / prev_close) * 100
+                        
+                        name_map = {'BTC-USD': 'Bitcoin', 'ETH-USD': 'Ethereum', 'AAPL': 'Apple', 'MSFT': 'Microsoft', 'NVDA': 'NVIDIA', 'TSLA': 'Tesla'}
+                        market_cards.append({
+                            "symbol": sym.replace('-USD', ''),
+                            "name": name_map.get(sym, sym),
+                            "price": round(current_close, 2),
+                            "change": round(change_percent, 2),
+                            "isCrypto": 'USD' in sym
+                        })
+            except Exception as inner_e:
+                print(f"Error parsing market data for {sym}: {inner_e}")
+                continue
+                
+        # If the live API acts up or rate limits, fallback to some realistic simulated data just so UI doesn't break
+        if not market_cards:
+            market_cards = [
+                {"symbol": "BTC", "name": "Bitcoin", "price": 64320.50, "change": 2.4, "isCrypto": True},
+                {"symbol": "ETH", "name": "Ethereum", "price": 3450.20, "change": -1.2, "isCrypto": True},
+                {"symbol": "NVDA", "name": "NVIDIA", "price": 890.15, "change": 5.6, "isCrypto": False},
+                {"symbol": "AAPL", "name": "Apple", "price": 172.50, "change": 0.5, "isCrypto": False},
+            ]
+            
+        return {"markets": market_cards}
+    except Exception as e:
+        print(f"Market fetch error: {e}")
+        # Always return a fallback so the UI never crashes for the user
+        return {"markets": [
+            {"symbol": "BTC", "name": "Bitcoin", "price": 64320.50, "change": 2.4, "isCrypto": True},
+            {"symbol": "NVDA", "name": "NVIDIA", "price": 890.15, "change": 5.6, "isCrypto": False},
+        ]}
+
+@app.post("/api/markets/analyze")
+async def analyze_market(req: AIRequest):
+    try:
+        symbol = req.content.strip().upper()
+        # Fetch actual live stock/financial context just so the AI has fresh data
+        # We fetch 1 month of history for trend
+        ticker = yf.Ticker(symbol)
+        hist = ticker.history(period="1mo")
+        
+        market_context = f"No live data found for {symbol}."
+        if not hist.empty:
+            current_price = hist['Close'].iloc[-1]
+            high_1mo = hist['High'].max()
+            low_1mo = hist['Low'].min()
+            volume_avg = hist['Volume'].mean()
+            market_context = (
+                f"Current Price: ${current_price:.2f}\n"
+                f"1 Month High/Low: ${high_1mo:.2f} / ${low_1mo:.2f}\n"
+                f"Avg Volume: {volume_avg:,.0f}\n"
+            )
+
+        prompt = (
+            f"Act as 'Gistly AI', an elite cyberpunk financial intelligence unit. "
+            f"Run a neuro-analysis on the following financial asset and output a highly stylized, aesthetic report.\n\n"
+            f"Target Asset: {symbol}\n"
+            f"Live Telemetry:\n{market_context}\n\n"
+            f"STRICT FORMAT REQUIREMENT (Follow this exact visual vibe, use markdown, emojis, and exact headers pacing):\n"
+            f"---\n"
+            f"🔮 **GISTLY NEURAL REPORT: {symbol}**\n\n"
+            f"**⚡ THE GIST (Overview):**\n"
+            f"[Write 1-2 punchy, futuristic sentences summarizing the current market trajectory]\n\n"
+            f"**🟢 BULL SIGNALS (Upside Potential):**\n"
+            f"  ✦ [Short, punchy point 1]\n"
+            f"  ✦ [Short, punchy point 2]\n\n"
+            f"**🔴 BEAR SIGNALS (Risk Factors):**\n"
+            f"  ✦ [Short, punchy point 1]\n"
+            f"  ✦ [Short, punchy point 2]\n\n"
+            f"**🧠 AI NEURAL SENTIMENT:**\n"
+            f"[BULLISH 🚀 / BEARISH 📉 / NEUTRAL ⚖️] - [Short 1 line reason]\n\n"
+            f"---\n"
+            f"⚠️ *Disclaimer: Generated via Gistly.site Neural Network. Not financial advice. Always DYOR.*"
+        )
+        result = await generate_ai_response(prompt)
+        return {"result": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Market analysis failed: {str(e)}")
+
+class ContactMessage(BaseModel):
+    name: str
+    email: str
+    message: str
+
+@app.post("/api/contact")
+async def send_contact_email(data: ContactMessage):
+    """
+    Handles messages from the site's Contact Us form.
+    Sends them using Zoho SMTP if configured, else prints to console.
+    """
+    smtp_user = os.getenv("ZOHO_EMAIL", "contact@gistly.site")
+    smtp_pass = os.getenv("ZOHO_APP_PASSWORD")
+    
+    if not smtp_pass:
+        print(f"\n--- 📩 INCOMING TRANSMISSION (SIMULATION MODE) ---")
+        print(f"From: {data.name} &lt;{data.email}&gt;")
+        print(f"Message:\n{data.message}")
+        print(f"--------------------------------------------------\n")
+        print(f"WARNING: ZOHO_APP_PASSWORD not set in .env. Message printed to console instead of emailing.")
+        return {"result": "Message received via local fallback. Set ZOHO_APP_PASSWORD in .env for live transmission."}
+    
+    msg = MIMEMultipart()
+    msg['From'] = smtp_user
+    msg['To'] = smtp_user
+    msg['Subject'] = f"Gistly Neural Uplink: Message from {data.name}"
+    
+    body = f"New incoming transmission to Gistly.site:\n\nUser Name: {data.name}\nUser Email: {data.email}\n\nMessage:\n{data.message}"
+    msg.attach(MIMEText(body, 'plain'))
+    
+    try:
+        server = smtplib.SMTP('smtp.zoho.com', 587)
+        server.starttls()
+        server.login(smtp_user, smtp_pass)
+        server.send_message(msg)
+        server.quit()
+        return {"result": "Message successfully transmitted to Gistly Nexus."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Transmission failed: {str(e)}")
+
+class CheckoutRequest(BaseModel):
+    variant_id: str
+
+@app.post("/api/create-checkout-session")
+async def create_checkout_session(request: CheckoutRequest):
+    if not ls or not LEMON_SQUEEZY_STORE_ID:
+        raise HTTPException(status_code=500, detail="Lemon Squeezy credentials are not configured on this server.")
+        
+    try:
+        # We manually build the API request as the python SDK might be limited or changing
+        headers = {
+            "Accept": "application/vnd.api+json",
+            "Content-Type": "application/vnd.api+json",
+            "Authorization": f"Bearer {LEMON_SQUEEZY_API_KEY}"
+        }
+        
+        payload = {
+            "data": {
+                "type": "checkouts",
+                "attributes": {
+                    "checkout_data": {
+                        "custom": {
+                            "user_id": "guest" # Can be updated with real user ID if using Clerk
+                        }
+                    }
+                },
+                "relationships": {
+                    "store": {
+                        "data": {
+                            "type": "stores",
+                            "id": LEMON_SQUEEZY_STORE_ID
+                        }
+                    },
+                    "variant": {
+                        "data": {
+                            "type": "variants",
+                            "id": request.variant_id
+                        }
+                    }
+                }
+            }
+        }
+        
+        response = requests.post(
+            "https://api.lemonsqueezy.com/v1/checkouts", 
+            json=payload, 
+            headers=headers
+        )
+        
+        if response.status_code != 201:
+            raise Exception(f"Failed to create checkout: {response.text}")
+            
+        data = response.json()
+        checkout_url = data["data"]["attributes"]["url"]
+        
+        return {"url": checkout_url}
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+</code></pre>\n<h2>Frontend Main Code (App.jsx) (src/App.jsx)</h2>\n<pre><code class="language-javascript">import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence, useDragControls } from 'framer-motion';
+
+import {
+    FileText, Code, Image as ImageIcon, Video, UserCheck,
+    Terminal, FileSearch, RefreshCw, FileCode, Search,
+    FileCheck, FileJson, Share2, Database, LayoutDashboard,
+    Sparkles, Zap, ChevronRight, Github, ExternalLink, Menu, X, ArrowLeft, Send, Loader2,
+    Lock, Wand2, Calculator, Settings, Globe, Volume2, Copy, Play, Mail, Cpu, Orbit, Fingerprint, Shield, MessageSquare, Maximize2, Move,
+    Mic, MicOff, Bot, Check, CreditCard, Star, History, Save, FilePlus, FolderOpen, Radio
+} from 'lucide-react';
+import axios from 'axios';
+import { clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+import { SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+import { Canvas, useFrame } from '@react-three/fiber';
+import { Sphere, MeshDistortMaterial } from '@react-three/drei';
+import Marquee from 'react-fast-marquee';
+import NewsPanel from './NewsPanel';
+
+function cn(...inputs) {
+    return twMerge(clsx(inputs));
+}
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+const tools = [
+    {
+        id: 'summarizer',
+        endpoint: '/api/summarize',
+        name: 'AI Summarizer',
+        description: 'Transform long articles into concise gists.',
+        icon: FileText,
+        color: 'text-blue-400',
+        bg: 'bg-blue-500/10',
+        border: 'border-blue-500/20',
+        category: 'Content',
+        placeholder: 'Paste your long text here...',
+        buttonText: 'Summarize Intelligence'
+    },
+    {
+        id: 'bug-fixer',
+        endpoint: '/api/debug',
+        name: 'AI Code Debugger',
+        description: 'Paste your code and let AI find and fix bugs.',
+        icon: Terminal,
+        color: 'text-orange-400',
+        bg: 'bg-orange-500/10',
+        border: 'border-orange-500/20',
+        category: 'Development',
+        placeholder: '// Paste your buggy code here...',
+        buttonText: 'Initiate Debugging'
+    },
+    {
+        id: 'humanizer',
+        endpoint: '/api/humanize',
+        name: 'Content Humanizer',
+        description: 'Make AI text sound authentically human.',
+        icon: UserCheck,
+        color: 'text-emerald-400',
+        bg: 'bg-emerald-500/10',
+        border: 'border-emerald-500/20',
+        category: 'Content',
+        placeholder: 'Paste AI-generated text here...',
+        buttonText: 'Humanize Text'
+    },
+    {
+        id: 'sql-gen',
+        endpoint: '/api/sql-generate',
+        name: 'Smart SQL Generator',
+        description: 'Natural language to optimized SQL queries.',
+        icon: Database,
+        color: 'text-cyan-400',
+        bg: 'bg-cyan-500/10',
+        border: 'border-cyan-500/20',
+        category: 'Data',
+        placeholder: 'Describe the query you need (e.g., "Find top 10 customers by revenue last month")...',
+        buttonText: 'Compile SQL'
+    },
+    {
+        id: 'image',
+        endpoint: '/api/generate-image',
+        name: 'AI Image Gen',
+        description: 'Generate stunning AI images from text prompts.',
+        icon: ImageIcon,
+        color: 'text-pink-400',
+        bg: 'bg-pink-500/10',
+        border: 'border-pink-500/20',
+        category: 'Creative',
+        placeholder: 'Describe the image you want to create in vivid detail...',
+        buttonText: 'Render Visual',
+        isImage: true
+    },
+    {
+        id: 'email-gen',
+        endpoint: '/api/email-gen',
+        name: 'Email Composer',
+        description: 'Draft highly effective professional emails instantly.',
+        icon: Send,
+        color: 'text-blue-500',
+        bg: 'bg-blue-600/10',
+        border: 'border-blue-600/20',
+        category: 'Business',
+        placeholder: 'Who is this email for and what should it say?',
+        buttonText: 'Draft Communication'
+    },
+    {
+        id: 'regex-gen',
+        endpoint: '/api/regex-gen',
+        name: 'Regex Builder',
+        description: 'Translate natural language to complex Regex patterns.',
+        icon: Code,
+        color: 'text-indigo-400',
+        bg: 'bg-indigo-500/10',
+        border: 'border-indigo-500/20',
+        category: 'Development',
+        placeholder: 'Describe the pattern (e.g., Match all valid Gmail addresses)...',
+        buttonText: 'Synthesize Pattern'
+    },
+    {
+        id: 'cover-letter',
+        endpoint: '/api/cover-letter',
+        name: 'Cover Letter Pro',
+        description: 'Create winning cover letters tailored to your dream job.',
+        icon: FileSearch,
+        color: 'text-yellow-400',
+        bg: 'bg-yellow-500/10',
+        border: 'border-yellow-500/20',
+        category: 'Career',
+        placeholder: 'Paste the job description and your key skills here...',
+        buttonText: 'Generate Application'
+    },
+    {
+        id: 'grammar-fix',
+        endpoint: '/api/grammar-fix',
+        name: 'Grammar Coach',
+        description: 'Fix typos, grammar, and elevate your writing style.',
+        icon: RefreshCw,
+        color: 'text-teal-400',
+        bg: 'bg-teal-500/10',
+        border: 'border-teal-500/20',
+        category: 'Content',
+        placeholder: 'Paste your draft text here to make it sound professional...',
+        buttonText: 'Refine Copy'
+    },
+    {
+        id: 'business-validator',
+        endpoint: '/api/business-validator',
+        name: 'Idea Validator',
+        description: 'Analyze your startup idea with pros, cons &amp; audience.',
+        icon: LayoutDashboard,
+        color: 'text-rose-400',
+        bg: 'bg-rose-500/10',
+        border: 'border-rose-500/20',
+        category: 'Business',
+        placeholder: 'Describe your business or app idea in detail...',
+        buttonText: 'Run Analysis'
+    },
+    {
+        id: 'youtube-summarizer',
+        endpoint: '/api/youtube-summarizer',
+        name: 'YouTube Summarizer',
+        description: 'Get instant intelligence and summaries from long YouTube videos.',
+        icon: Video,
+        color: 'text-red-500',
+        bg: 'bg-red-500/10',
+        border: 'border-red-500/20',
+        category: 'Content',
+        placeholder: 'Paste YouTube URL here...',
+        buttonText: 'Extract Insights'
+    },
+    {
+        id: 'webpage-summarizer',
+        endpoint: '/api/webpage-summarizer',
+        name: 'Webpage Summarizer',
+        description: 'TL;DR for any article or website link.',
+        icon: Globe,
+        color: 'text-sky-400',
+        bg: 'bg-sky-500/10',
+        border: 'border-sky-500/20',
+        category: 'Content',
+        placeholder: 'Paste Website URL here...',
+        buttonText: 'Digest Page'
+    },
+    {
+        id: 'tts-gen',
+        endpoint: '/api/tts',
+        name: 'AI Voice Generator',
+        description: 'Convert any text into natural human speech.',
+        icon: Volume2,
+        color: 'text-violet-400',
+        bg: 'bg-violet-500/10',
+        border: 'border-violet-500/20',
+        category: 'Creative',
+        placeholder: 'Enter text to synthesize into speech...',
+        buttonText: 'Synthesize Audio',
+        isAudio: true
+    },
+    {
+        id: 'vision-api',
+        endpoint: '/api/vision',
+        name: 'Vision Analytics',
+        description: 'Understand and analyze any image context (Coming Soon).',
+        icon: ImageIcon,
+        color: 'text-emerald-500',
+        bg: 'bg-emerald-600/10',
+        border: 'border-emerald-600/20',
+        category: 'Creative',
+        placeholder: 'Image analysis context or questions...',
+        buttonText: 'Analyze Frame',
+        isStatic: true
+    }
+];
+
+const categories = ['All', 'Content', 'Development', 'Creative', 'Data', 'Business'];
+
+// Galaxy / Starfield effect moving towards camera
+const MovingStars = () =&gt; {
+    const pointsRef = useRef();
+
+    // Generate random stars
+    const [starPositions] = useState(() =&gt; {
+        const positions = new Float32Array(5000 * 3);
+        for (let i = 0; i &lt; 5000; i++) {
+            positions[i * 3] = (Math.random() - 0.5) * 100;     // x
+            positions[i * 3 + 1] = (Math.random() - 0.5) * 100; // y
+            positions[i * 3 + 2] = (Math.random() - 0.5) * 100; // z
+        }
+        return positions;
+    });
+
+    useFrame((state, delta) =&gt; {
+        if (pointsRef.current) {
+            // Move stars towards camera (z increases)
+            const positions = pointsRef.current.geometry.attributes.position.array;
+            for (let i = 0; i &lt; 5000; i++) {
+                positions[i * 3 + 2] += delta * 20; // Speed of ship
+                if (positions[i * 3 + 2] &gt; 10) {
+                    // Reset far back with random depth to prevent flat walls of stars
+                    positions[i * 3 + 2] = -90 - Math.random() * 50;
+                    // Optional: also randomize X and Y slightly when resetting to prevent visible trails over time
+                    positions[i * 3] = (Math.random() - 0.5) * 100;
+                    positions[i * 3 + 1] = (Math.random() - 0.5) * 100;
+                }
+            }
+            pointsRef.current.geometry.attributes.position.needsUpdate = true;
+
+            // Add slight global rotation for a dynamic steering effect
+            pointsRef.current.rotation.z -= delta * 0.02;
+            pointsRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.1) * 0.1;
+            pointsRef.current.rotation.x = Math.cos(state.clock.elapsedTime * 0.15) * 0.05;
+        }
+    });
+
+    return (
+        &lt;points ref={pointsRef}&gt;
+            &lt;bufferGeometry&gt;
+                &lt;bufferAttribute
+                    attach="attributes-position"
+                    count={starPositions.length / 3}
+                    array={starPositions}
+                    itemSize={3}
+                /&gt;
+            &lt;/bufferGeometry&gt;
+            &lt;pointsMaterial
+                size={0.12}
+                color="#e0e7ff"
+                transparent
+                opacity={0.6}
+                sizeAttenuation
+                depthWrite={false}
+                blending={2} // AdditiveBlending
+            /&gt;
+        &lt;/points&gt;
+    );
+};
+
+// Floating Holographic Texts in the Galaxy
+import { Text } from '@react-three/drei';
+
+const FloatingTexts = () =&gt; {
+    const textGroupRef = useRef();
+
+    // Generate random positions for the texts
+    const [texts] = useState(() =&gt; {
+        const items = [];
+        for (let i = 0; i &lt; 15; i++) {
+            items.push({
+                x: (Math.random() - 0.5) * 40,
+                y: (Math.random() - 0.5) * 40,
+                z: -50 - Math.random() * 100, // Starts far back
+                scale: 1 + Math.random() * 2 // slightly different sizes
+            });
+        }
+        return items;
+    });
+
+    useFrame((state, delta) =&gt; {
+        if (textGroupRef.current) {
+            // Move texts towards camera same as stars
+            textGroupRef.current.children.forEach(child =&gt; {
+                child.position.z += delta * 20;
+                // Fade out/in based on distance
+                if (child.position.z &gt; 5) {
+                    child.position.z = -150 - Math.random() * 50;
+                    child.position.x = (Math.random() - 0.5) * 40;
+                    child.position.y = (Math.random() - 0.5) * 40;
+                }
+            });
+            // Steer effect to match stars
+            textGroupRef.current.rotation.z -= delta * 0.02;
+            textGroupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.1) * 0.1;
+            textGroupRef.current.rotation.x = Math.cos(state.clock.elapsedTime * 0.15) * 0.05;
+        }
+    });
+
+    return (
+        &lt;group ref={textGroupRef}&gt;
+            {texts.map((props, i) =&gt; (
+                &lt;Text
+                    key={i}
+                    position={[props.x, props.y, props.z]}
+                    scale={[props.scale, props.scale, props.scale]}
+                    fontSize={0.6}
+                    color="#4f46e5"
+                    fillOpacity={0.15} // very subtle holographic feel
+                    anchorX="center"
+                    anchorY="middle"
+                    font="https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZJhjp-Ek-_EeA.woff" // Optional proper font
+                    fontWeight={900}
+                &gt;
+                    Gistly.ai
+                &lt;/Text&gt;
+            ))}
+        &lt;/group&gt;
+    );
+};
+
+// The Interactive 3D AI Core (Siri/Bixby Style)
+const BrainCore = () =&gt; {
+    const groupRef = useRef();
+
+    useFrame((state) =&gt; {
+        if (groupRef.current) {
+            groupRef.current.rotation.x = state.clock.getElapsedTime() * 0.2;
+            groupRef.current.rotation.y = state.clock.getElapsedTime() * 0.3;
+            groupRef.current.rotation.z = Math.sin(state.clock.getElapsedTime() * 0.5) * 0.2;
+        }
+    });
+
+    return (
+        &lt;group ref={groupRef} scale={2.4}&gt;
+            {/* Inner Core - Deep Red / Ruby (Glassy) */}
+            &lt;Sphere args={[1.0, 64, 64]}&gt;
+                &lt;MeshDistortMaterial
+                    color="#991b1b"
+                    emissive="#7f1d1d"
+                    emissiveIntensity={1.5}
+                    distort={0.3}
+                    speed={3}
+                    roughness={0}
+                    metalness={1}
+                /&gt;
+            &lt;/Sphere&gt;
+
+            {/* Middle Layer - Deep Purple / Indigo (Glassy) */}
+            &lt;Sphere args={[1.2, 64, 64]}&gt;
+                &lt;MeshDistortMaterial
+                    color="#4c1d95"
+                    emissive="#581c87"
+                    emissiveIntensity={1}
+                    distort={0.4}
+                    speed={4}
+                    transparent
+                    opacity={0.6}
+                    roughness={0}
+                    metalness={1}
+                    blending={2} // AdditiveBlending
+                /&gt;
+            &lt;/Sphere&gt;
+
+            {/* Outer Layer - Deep Electric Blue / Navy (Glassy) */}
+            &lt;Sphere args={[1.4, 64, 64]}&gt;
+                &lt;MeshDistortMaterial
+                    color="#1e3a8a"
+                    emissive="#1e40af"
+                    emissiveIntensity={0.8}
+                    distort={0.6}
+                    speed={2}
+                    transparent
+                    opacity={0.4}
+                    roughness={0}
+                    metalness={1}
+                    blending={2} // AdditiveBlending
+                /&gt;
+            &lt;/Sphere&gt;
+        &lt;/group&gt;
+    );
+};
+
+// The Gistly Voice Assistant (J.A.R.V.I.S Style)
+const GistlyVoiceAssistant = () =&gt; {
+    const [isOpen, setIsOpen] = useState(false);
+    const [isListening, setIsListening] = useState(false);
+    const [transcript, setTranscript] = useState('');
+    const [isSpeaking, setIsSpeaking] = useState(false);
+
+    const speak = (msg) =&gt; {
+        if (!window.speechSynthesis) return;
+        window.speechSynthesis.cancel(); // stop any current speech
+        const utterance = new SpeechSynthesisUtterance(msg);
+        utterance.rate = 1.1; // JARVIS-like speed
+        utterance.pitch = 0.95; // Slightly lower pitch for a sophisticated feel
+
+        utterance.onstart = () =&gt; setIsSpeaking(true);
+        utterance.onend = () =&gt; setIsSpeaking(false);
+
+        window.speechSynthesis.speak(utterance);
+    };
+
+    const toggleAssistant = () =&gt; {
+        if (!isOpen) {
+            setIsOpen(true);
+            setTimeout(() =&gt; {
+                speak("Hi, I'm Gistly. How can I help you today?");
+            }, 500);
+        } else {
+            setIsOpen(false);
+            setIsListening(false);
+            window.speechSynthesis?.cancel();
+        }
+    };
+
+    const handleListen = () =&gt; {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("Your browser does not support Speech Recognition.");
+            return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        recognition.onstart = () =&gt; {
+            setIsListening(true);
+            setTranscript("Listening...");
+        };
+
+        recognition.onresult = (event) =&gt; {
+            const current = event.resultIndex;
+            const text = event.results[current][0].transcript;
+            setTranscript(text);
+            setIsListening(false);
+
+            // Basic logic: if user speaks, AI responds (simplified demo)
+            setTimeout(() =&gt; {
+                speak(`I understood you said: ${text}. I'm processing that on my neural neural core.`);
+            }, 800);
+        };
+
+        recognition.onerror = () =&gt; {
+            setIsListening(false);
+            setTranscript("Error occurred.");
+        };
+
+        recognition.start();
+    };
+
+    return (
+        &lt;div className="fixed bottom-8 right-8 z-[100] flex flex-col items-end"&gt;
+            &lt;AnimatePresence&gt;
+                {isOpen &amp;&amp; (
+                    &lt;motion.div
+                        initial={{ opacity: 0, scale: 0.5, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.5, y: 20 }}
+                        className="bg-black/60 backdrop-blur-2xl border border-indigo-500/20 rounded-3xl p-6 mb-6 w-72 shadow-[0_0_50px_rgba(79,70,229,0.15)] relative overflow-hidden"
+                    &gt;
+                        {/* JARVIS Glow background */}
+                        &lt;div className="absolute inset-0 bg-radial-gradient from-indigo-500/10 to-transparent pointer-events-none" /&gt;
+
+                        &lt;div className="relative z-10"&gt;
+                            &lt;div className="flex items-center gap-3 mb-4"&gt;
+                                &lt;div className={cn(
+                                    "p-2 rounded-full border border-indigo-500/30",
+                                    isSpeaking ? "bg-indigo-500/20 shadow-[0_0_15px_rgba(99,102,241,0.5)]" : "bg-black/40"
+                                )}&gt;
+                                    &lt;Bot className="w-5 h-5 text-indigo-400" /&gt;
+                                &lt;/div&gt;
+                                &lt;div&gt;
+                                    &lt;h4 className="text-white font-bold text-sm tracking-wide"&gt;GISTLY ASSISTANT&lt;/h4&gt;
+                                    &lt;p className="text-[10px] text-indigo-400 font-mono tracking-widest uppercase opacity-70"&gt;Core 2.0&lt;/p&gt;
+                                &lt;/div&gt;
+                            &lt;/div&gt;
+
+                            &lt;div className="bg-white/5 rounded-2xl p-4 mb-4 min-h-[80px] flex items-center justify-center text-center"&gt;
+                                &lt;p className="text-zinc-400 text-xs italic leading-relaxed"&gt;
+                                    {transcript || "Click the mic to speak with Gistly"}
+                                &lt;/p&gt;
+                            &lt;/div&gt;
+
+                            &lt;div className="flex justify-center gap-4"&gt;
+                                &lt;button
+                                    onClick={handleListen}
+                                    disabled={isListening || isSpeaking}
+                                    className={cn(
+                                        "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-500",
+                                        isListening ? "bg-red-500/20 border-red-500/50 scale-110" : "bg-indigo-500/10 border border-indigo-500/30 hover:bg-indigo-500/30"
+                                    )}
+                                &gt;
+                                    {isListening ? (
+                                        &lt;div className="relative"&gt;
+                                            &lt;div className="absolute -inset-2 bg-red-500/20 animate-ping rounded-full" /&gt;
+                                            &lt;Mic className="w-5 h-5 text-red-400" /&gt;
+                                        &lt;/div&gt;
+                                    ) : &lt;Mic className="w-5 h-5 text-indigo-400" /&gt;}
+                                &lt;/button&gt;
+
+                                {isSpeaking &amp;&amp; (
+                                    &lt;div className="flex items-center gap-1"&gt;
+                                        {[1, 2, 3, 4].map(i =&gt; (
+                                            &lt;motion.div
+                                                key={i}
+                                                animate={{ height: [8, 20, 8] }}
+                                                transition={{ duration: 0.5, repeat: Infinity, delay: i * 0.1 }}
+                                                className="w-1 bg-indigo-500/50 rounded-full"
+                                            /&gt;
+                                        ))}
+                                    &lt;/div&gt;
+                                )}
+                            &lt;/div&gt;
+                        &lt;/div&gt;
+                    &lt;/motion.div&gt;
+                )}
+            &lt;/AnimatePresence&gt;
+
+            &lt;motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={toggleAssistant}
+                className={cn(
+                    "relative group w-16 h-16 rounded-full bg-[#0a0a0c] border border-white/5 flex items-center justify-center shadow-2xl overflow-hidden",
+                    isOpen ? "ring-2 ring-indigo-500/50" : ""
+                )}
+            &gt;
+                {/* Spinner outer ring */}
+                &lt;div className="absolute inset-0 border-2 border-transparent border-t-indigo-500/40 rounded-full animate-spin duration-3000" /&gt;
+
+                {/* Animated aura */}
+                &lt;div className={cn(
+                    "absolute inset-0 bg-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500",
+                    isSpeaking ? "opacity-100 bg-red-500/10" : ""
+                )} /&gt;
+
+                &lt;div className="relative"&gt;
+                    {isOpen ? (
+                        &lt;X className="w-6 h-6 text-white" /&gt;
+                    ) : (
+                        &lt;div className="relative"&gt;
+                            &lt;div className="absolute -inset-4 bg-indigo-500/10 animate-pulse rounded-full" /&gt;
+                            &lt;Cpu className="w-7 h-7 text-indigo-500 group-hover:text-indigo-400 transition-colors" /&gt;
+                        &lt;/div&gt;
+                    )}
+                &lt;/div&gt;
+
+                {/* Status indicator */}
+                &lt;div className={cn(
+                    "absolute bottom-0 right-0 w-3 h-3 border-2 border-[#0a0a0c] rounded-full",
+                    isListening ? "bg-red-500" : "bg-emerald-500"
+                )} /&gt;
+            &lt;/motion.button&gt;
+        &lt;/div&gt;
+    );
+};
+
+// Premium Pricing Modal Component
+const PricingModal = ({ isOpen, onClose }) =&gt; {
+    const plans = [
+        {
+            name: "Free Explorer",
+            price: "$0",
+            desc: "For curiosity and testing",
+            features: ["5 Daily Generations", "Standard Speed", "Community Support", "Basic Neural Wires"],
+            button: "Current Plan",
+            color: "border-zinc-800 bg-zinc-900/50",
+            textColor: "text-zinc-400"
+        },
+        {
+            name: "Pro Architect",
+            price: "$19",
+            period: "/mo",
+            price_id: "1367798", // Pro Architect Lemon Squeezy Variant ID
+            desc: "The professional standard",
+            features: ["Unlimited Neural Ops", "Priority GPU Access", "Gistly Voice AI", "Advanced Debugger", "Early Beta Access"],
+            button: "Upgrade to Pro",
+            popular: true,
+            color: "border-indigo-500/40 bg-indigo-500/10 shadow-[0_0_40px_rgba(99,102,241,0.1)]",
+            textColor: "text-white"
+        },
+        {
+            name: "Neural Agency",
+            price: "$99",
+            period: "/mo",
+            price_id: "1367804", // Neural Agency Lemon Squeezy Variant ID
+            desc: "Scale your intelligence",
+            features: ["Everything in Pro", "API Developer Key", "Custom Model Tuning", "Dedicated Data Line", "SLA Guarantee"],
+            button: "Contact Sales",
+            color: "border-emerald-500/30 bg-emerald-500/5",
+            textColor: "text-white"
+        }
+    ];
+
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleCheckout = async (priceId) =&gt; {
+        setIsLoading(true);
+        try {
+            const response = await axios.post(`${API_BASE_URL}/api/create-checkout-session`, {
+                price_id: priceId
+            });
+            window.location.href = response.data.url;
+        } catch (error) {
+            console.error("Stripe Checkout Error:", error);
+            alert("Failed to initialize payment gateway. Please make sure Stripe keys are setup in the backend.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        &lt;AnimatePresence&gt;
+            {isOpen &amp;&amp; (
+                &lt;motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-xl p-4 overflow-y-auto"
+                &gt;
+                    &lt;motion.div
+                        initial={{ scale: 0.95, y: 20 }}
+                        animate={{ scale: 1, y: 0 }}
+                        exit={{ scale: 0.95, y: 20 }}
+                        className="bg-[#09090b] border border-white/10 rounded-[40px] p-8 md:p-12 max-w-6xl w-full relative shadow-3xl"
+                    &gt;
+                        &lt;button
+                            onClick={onClose}
+                            className="absolute top-8 right-8 text-zinc-500 hover:text-white transition-colors"
+                        &gt;
+                            &lt;X className="w-6 h-6" /&gt;
+                        &lt;/button&gt;
+
+                        &lt;div className="text-center mb-12"&gt;
+                            &lt;h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight"&gt;Expand Your Intelligence&lt;/h2&gt;
+                            &lt;p className="text-zinc-500 max-w-xl mx-auto text-lg leading-relaxed"&gt;
+                                Choose the neural bandwidth that fits your evolution. No limits, just pure execution.
+                            &lt;/p&gt;
+                        &lt;/div&gt;
+
+                        &lt;div className="grid grid-cols-1 md:grid-cols-3 gap-6"&gt;
+                            {plans.map((plan, i) =&gt; (
+                                &lt;motion.div
+                                    key={i}
+                                    whileHover={{ y: -10 }}
+                                    className={cn(
+                                        "relative border p-8 rounded-[32px] flex flex-col transition-all",
+                                        plan.color
+                                    )}
+                                &gt;
+                                    {plan.popular &amp;&amp; (
+                                        &lt;div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-indigo-500 text-white text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-lg"&gt;
+                                            Most Popular
+                                        &lt;/div&gt;
+                                    )}
+
+                                    &lt;div className="mb-8"&gt;
+                                        &lt;h3 className="text-xl font-bold text-white mb-2"&gt;{plan.name}&lt;/h3&gt;
+                                        &lt;div className="flex items-baseline gap-1"&gt;
+                                            &lt;span className="text-4xl font-black text-white"&gt;{plan.price}&lt;/span&gt;
+                                            {plan.period &amp;&amp; &lt;span className="text-zinc-500 font-medium text-sm"&gt;{plan.period}&lt;/span&gt;}
+                                        &lt;/div&gt;
+                                        &lt;p className="text-zinc-500 text-sm mt-3"&gt;{plan.desc}&lt;/p&gt;
+                                    &lt;/div&gt;
+
+                                    &lt;div className="space-y-4 mb-10 flex-1"&gt;
+                                        {plan.features.map((feat, j) =&gt; (
+                                            &lt;div key={j} className="flex items-start gap-3 text-sm"&gt;
+                                                &lt;div className="mt-1 flex-shrink-0 w-4 h-4 rounded-full bg-emerald-500/20 flex items-center justify-center"&gt;
+                                                    &lt;Check className="w-2.5 h-2.5 text-emerald-400" /&gt;
+                                                &lt;/div&gt;
+                                                &lt;span className="text-zinc-400 font-medium"&gt;{feat}&lt;/span&gt;
+                                            &lt;/div&gt;
+                                        ))}
+                                    &lt;/div&gt;
+                                    &lt;button
+                                        disabled={isLoading}
+                                        onClick={() =&gt; {
+                                            if (plan.price === "$0") {
+                                                onClose();
+                                            } else if (plan.price === "$99") {
+                                                alert("Enterprise contact initiated. Check Neural Uplink.");
+                                            } else {
+                                                handleCheckout(plan.price_id);
+                                            }
+                                        }}
+                                        className={cn(
+                                            "w-full py-4 mt-auto rounded-2xl font-bold text-sm transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2",
+                                            plan.popular
+                                                ? "bg-indigo-500 text-white hover:bg-indigo-400 shadow-indigo-500/25"
+                                                : "bg-white/5 text-zinc-300 hover:bg-white/10"
+                                        )}
+                                    &gt;
+                                        {isLoading &amp;&amp; plan.price === "$19" ? &lt;Loader2 className="w-4 h-4 animate-spin" /&gt; : null}
+                                        {isLoading &amp;&amp; plan.price === "$19" ? "Connecting..." : plan.button}
+                                    &lt;/button&gt;
+                                &lt;/motion.div&gt;
+                            ))}
+                        &lt;/div&gt;
+
+                        &lt;div className="mt-12 text-center text-xs text-zinc-600 font-mono uppercase tracking-[0.2em] opacity-50"&gt;
+                            Secure Encrypted Transactions • Global Intelligence Access
+                        &lt;/div&gt;
+                    &lt;/motion.div&gt;
+                &lt;/motion.div&gt;
+            )}
+        &lt;/AnimatePresence&gt;
+    );
+};
+
+// Represents a single floating tool execution node on the canvas
+const DraggableNode = ({ data, removeNode, updateNodePosition }) =&gt; {
+    const [inputText, setInputText] = useState('');
+    const [result, setResult] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [imageLoading, setImageLoading] = useState(false);
+    const [imageError, setImageError] = useState(false);
+    const [generationTime, setGenerationTime] = useState(0);
+
+    const tool = tools.find(t =&gt; t.id === data.toolId);
+
+    useEffect(() =&gt; {
+        let interval;
+        let timeout;
+        if (imageLoading) {
+            interval = setInterval(() =&gt; {
+                setGenerationTime(prev =&gt; prev + 1);
+            }, 1000);
+            timeout = setTimeout(() =&gt; {
+                if (imageLoading) {
+                    setImageLoading(false);
+                    setImageError(true);
+                }
+            }, 35000);
+        } else {
+            setGenerationTime(0);
+        }
+        return () =&gt; {
+            clearInterval(interval);
+            clearTimeout(timeout);
+        };
+    }, [imageLoading]);
+
+    const formatTime = (seconds) =&gt; {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const handleRunTool = async () =&gt; {
+        if (tool.isStatic) {
+            setResult("System Notice: Module architecture for Vision API is currently being initialized.");
+            return;
+        }
+
+        setLoading(true);
+        setResult('');
+
+        if (tool.isImage) {
+            setImageLoading(true);
+            setImageError(false);
+        }
+
+        try {
+            const response = await axios.post(`${API_BASE_URL}${tool.endpoint}`, {
+                content: inputText
+            });
+            setResult(response.data.result);
+        } catch (error) {
+            setResult(`Error: ${error.response?.data?.detail || error.message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const dragControls = useDragControls();
+
+    return (
+        &lt;motion.div
+            drag
+            dragListener={false}
+            dragControls={dragControls}
+            dragMomentum={false}
+            onDragEnd={(e, info) =&gt; updateNodePosition(data.id, info.point.x, info.point.y)}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className={`absolute w-[calc(100vw-32px)] md:w-[450px] pointer-events-auto bg-[#111113]/80 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col z-20 group`}
+            style={{ x: data.x, y: data.y }}
+            whileDrag={{ scale: 1.02, zIndex: 50, boxShadow: '0 30px 60px rgba(99,102,241,0.2)' }}
+        &gt;
+            {/* Header (Drag Handle) */}
+            &lt;div
+                className={`p-4 border-b border-white/10 flex items-center justify-between bg-black/40 hover:bg-white/[0.02]`}
+            &gt;
+                &lt;div className="flex items-center gap-3"&gt;
+                    &lt;div
+                        className="cursor-grab active:cursor-grabbing p-1.5 -ml-1.5 hover:bg-white/5 rounded-md transition-colors"
+                        onPointerDown={(e) =&gt; {
+                            e.preventDefault();
+                            dragControls.start(e);
+                        }}
+                    &gt;
+                        &lt;Move className="w-4 h-4 text-zinc-500 hover:text-zinc-300" /&gt;
+                    &lt;/div&gt;
+                    &lt;div className={cn("p-1.5 rounded-md border", tool.bg, tool.border)}&gt;
+                        &lt;tool.icon className={cn("w-4 h-4", tool.color)} /&gt;
+                    &lt;/div&gt;
+                    &lt;h3 className="font-bold text-white text-sm tracking-tight"&gt;{tool.name}&lt;/h3&gt;
+                &lt;/div&gt;
+                &lt;button
+                    onClick={() =&gt; removeNode(data.id)}
+                    className="text-zinc-500 hover:text-red-400 transition-colors p-1 relative z-50 pointer-events-auto cursor-pointer"
+                &gt;
+                    &lt;X className="w-4 h-4" /&gt;
+                &lt;/button&gt;
+            &lt;/div&gt;
+
+            {/* Content Area */}
+            &lt;div className="p-0 flex flex-col cursor-auto"&gt;
+                &lt;textarea
+                    value={inputText}
+                    onChange={(e) =&gt; setInputText(e.target.value)}
+                    placeholder={tool.placeholder}
+                    className="w-full h-[120px] bg-transparent p-4 text-zinc-300 focus:ring-0 outline-none resize-none font-mono text-xs leading-relaxed placeholder:text-zinc-700 border-b border-white/5"
+                    spellCheck={false}
+                /&gt;
+
+                &lt;div className="p-3 bg-black/20 flex justify-end shrink-0"&gt;
+                    &lt;button
+                        disabled={loading || !inputText}
+                        onClick={handleRunTool}
+                        className="px-5 py-2 bg-indigo-500 text-white disabled:bg-zinc-800 disabled:text-zinc-600 text-xs font-bold uppercase tracking-widest rounded-lg transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:shadow-[0_0_25px_rgba(99,102,241,0.5)] disabled:shadow-none"
+                    &gt;
+                        {loading ? &lt;Loader2 className="w-3.5 h-3.5 animate-spin" /&gt; : &lt;Play className="w-3.5 h-3.5 fill-current" /&gt;}
+                        Execute Node
+                    &lt;/button&gt;
+                &lt;/div&gt;
+
+                {/* Output Area */}
+                {(result || loading) &amp;&amp; (
+                    &lt;div className="p-4 bg-black/40 border-t border-white/5 max-h-[250px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"&gt;
+                        {loading &amp;&amp; !result &amp;&amp; (
+                            &lt;div className="flex flex-col items-center justify-center py-6 text-indigo-400"&gt;
+                                &lt;Sparkles className="w-6 h-6 animate-pulse mb-3 opacity-50" /&gt;
+                                &lt;span className="text-[10px] font-mono uppercase tracking-[0.2em] animate-pulse"&gt;Processing Core Logic...&lt;/span&gt;
+                            &lt;/div&gt;
+                        )}
+
+                        {result &amp;&amp; (
+                            &lt;div className="animate-fade-in relative text-sm"&gt;
+                                {tool.isImage ? (
+                                    &lt;div className="rounded-xl overflow-hidden border border-white/10 relative bg-black aspect-square"&gt;
+                                        {imageLoading &amp;&amp; (
+                                            &lt;div className="absolute inset-0 flex flex-col items-center justify-center z-10"&gt;
+                                                &lt;div className="text-xl font-mono text-white mb-2"&gt;{formatTime(generationTime)}&lt;/div&gt;
+                                                &lt;span className="text-[8px] uppercase tracking-widest text-indigo-400"&gt;Rendering...&lt;/span&gt;
+                                            &lt;/div&gt;
+                                        )}
+                                        {imageError &amp;&amp; (
+                                            &lt;div className="absolute inset-0 flex items-center justify-center z-10 text-red-400 text-xs text-center px-4"&gt;
+                                                Task Timeout/Failed. Try again.
+                                            &lt;/div&gt;
+                                        )}
+                                        &lt;img
+                                            src={`data:image/png;base64,${result}`}
+                                            className={cn("w-full h-full object-cover transition-all duration-1000", (imageLoading || imageError || !result) ? "opacity-0 grayscale" : "opacity-100")}
+                                            alt="Render"
+                                            onLoad={() =&gt; { setImageLoading(false); setImageError(false); }}
+                                            onError={() =&gt; { if (result) { setImageLoading(false); setImageError(true); } }}
+                                        /&gt;
+                                    &lt;/div&gt;
+                                ) : tool.isAudio ? (
+                                    &lt;div className="py-4"&gt;
+                                        &lt;audio controls className="w-full accent-violet-500 scale-90" autoPlay&gt;
+                                            &lt;source src={`data:audio/mp3;base64,${result}`} type="audio/mp3" /&gt;
+                                        &lt;/audio&gt;
+                                    &lt;/div&gt;
+                                ) : (
+                                    &lt;div className="text-zinc-300 font-sans text-xs leading-loose whitespace-pre-wrap"&gt;
+                                        {result}
+                                    &lt;/div&gt;
+                                )}
+                            &lt;/div&gt;
+                        )}
+                    &lt;/div&gt;
+                )}
+            &lt;/div&gt;
+        &lt;/motion.div &gt;
+    );
+};
+
+export default function App() {
+    const { user, isSignedIn } = useUser();
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('All');
+    const [nodes, setNodes] = useState([]); // Active nodes on canvas
+    const [workflowId, setWorkflowId] = useState(`flow_${Math.random().toString(36).substr(2, 9)}`);
+    const [workflowName, setWorkflowName] = useState("My Neural Workflow");
+    const [history, setHistory] = useState([]);
+    const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+
+    // Modal states
+    const [isGuideOpen, setIsGuideOpen] = useState(false);
+    const [isContactOpen, setIsContactOpen] = useState(false);
+
+    // Contact Form State
+    const [contactName, setContactName] = useState('');
+    const [contactEmail, setContactEmail] = useState('');
+    const [contactMessage, setContactMessage] = useState('');
+    const [isSendingContact, setIsSendingContact] = useState(false);
+    const [contactStatus, setContactStatus] = useState(null);
+
+    const handleContactSubmit = async (e) =&gt; {
+        e.preventDefault();
+        setIsSendingContact(true);
+        setContactStatus(null);
+        try {
+            await axios.post(`${API_BASE_URL}/api/contact`, {
+                name: contactName,
+                email: contactEmail,
+                message: contactMessage
+            });
+            setContactStatus({ type: 'success', text: 'Transmission Successful.' });
+            setContactName('');
+            setContactEmail('');
+            setContactMessage('');
+            setTimeout(() =&gt; setContactStatus(null), 5000);
+        } catch (error) {
+            console.error("Contact Form Error:", error);
+            setContactStatus({ type: 'error', text: 'Transmission Failed. Try again.' });
+        } finally {
+            setIsSendingContact(false);
+        }
+    };
+
+    const [isAboutOpen, setIsAboutOpen] = useState(false);
+    const [isPricingOpen, setIsPricingOpen] = useState(false);
+    const [isNewsOpen, setIsNewsOpen] = useState(false);
+
+    // Mobile exclusive states
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    const filteredTools = tools.filter(tool =&gt; {
+        const matchesCategory = selectedCategory === 'All' || tool.category === selectedCategory;
+        const matchesSearch = tool.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            tool.description.toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesCategory &amp;&amp; matchesSearch;
+    });
+
+    const saveWorkflow = async () =&gt; {
+        if (!isSignedIn) {
+            alert("Please sign in to save your workflow.");
+            return;
+        }
+        setIsSaving(true);
+        try {
+            await axios.post(`${API_BASE_URL}/api/workflows/save`, {
+                id: workflowId,
+                user_id: user.id,
+                name: workflowName,
+                nodes: nodes
+            });
+            // show subtle toast or message
+            alert("Architecture Protocol Saved Successfully.");
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const fetchHistory = async () =&gt; {
+        if (!isSignedIn) return;
+        try {
+            const resp = await axios.get(`${API_BASE_URL}/api/workflows/${user.id}`);
+            setHistory(resp.data.workflows);
+            setIsHistoryOpen(true);
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const loadWorkflow = async (id) =&gt; {
+        try {
+            const resp = await axios.get(`${API_BASE_URL}/api/workflow-data/${id}`);
+            setNodes(resp.data.nodes);
+            setWorkflowId(id);
+            setWorkflowName(resp.data.name);
+            setIsHistoryOpen(false);
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const clearCanvas = () =&gt; {
+        if (window.confirm("Initialize clean architecture? All current nodes will be cleared.")) {
+            setNodes([]);
+            setWorkflowId(`flow_${Math.random().toString(36).substr(2, 9)}`);
+            setWorkflowName("New Neural Workflow");
+        }
+    };
+
+    const addNode = (toolId) =&gt; {
+        const offset = (nodes.length * 30) % 150;
+        const newNode = {
+            id: `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            toolId,
+            // Spawn systematically around center, adjusting for mobile width
+            x: window.innerWidth &lt; 768 ? 16 : (window.innerWidth / 2 - 225 + offset - 100),
+            y: window.innerWidth &lt; 768 ? 150 + offset : (window.innerHeight / 2 - 200 + offset),
+        };
+        if (window.innerWidth &lt; 768) {
+            setIsMobileMenuOpen(false); // Close mobile menu after selecting a tool
+        }
+        setNodes(curr =&gt; [...curr, newNode]);
+    };
+
+    const removeNode = (id) =&gt; {
+        setNodes(curr =&gt; curr.filter(n =&gt; n.id !== id));
+    };
+
+    const updateNodePosition = (id, x, y) =&gt; {
+        // Keeps tracks of node coords for lines connecting to center (optional visual feature)
+        setNodes(curr =&gt; curr.map(n =&gt; n.id === id ? { ...n, x, y } : n));
+    };
+
+    // Calculate dynamic SVG wires from the core (center) to each node
+    const centerX = typeof window !== 'undefined' ? window.innerWidth / 2 : 0;
+    const centerY = typeof window !== 'undefined' ? window.innerHeight / 2 : 0;
+
+    return (
+        &lt;&gt;
+            &lt;div className="min-h-screen bg-[#050505] text-zinc-300 font-sans selection:bg-indigo-500/30 overflow-hidden relative"&gt;
+
+                {/* 3D Background &amp; Neural Architecture */}
+                &lt;div className="fixed inset-0 z-0 pointer-events-none flex items-center justify-center"&gt;
+                    &lt;Canvas camera={{ position: [0, 0, 8] }} className="absolute inset-0"&gt;
+                        &lt;ambientLight intensity={0.5} /&gt;
+                        &lt;directionalLight position={[10, 10, 5]} intensity={1.5} color="#6366f1" /&gt;
+                        &lt;pointLight position={[-10, -10, -5]} color="#22d3ee" intensity={2} /&gt;
+                        &lt;pointLight position={[5, -5, 5]} color="#a855f7" intensity={1} /&gt;
+
+                        {/* Add the moving galaxy/stars effect */}
+                        &lt;MovingStars /&gt;
+                        &lt;FloatingTexts /&gt;
+
+                        &lt;BrainCore /&gt;
+                    &lt;/Canvas&gt;
+
+                    {/* Visual grid overlay for canvas feel */}
+                    &lt;div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:100px_100px] pointer-events-none" /&gt;
+
+                    {/* Optional radial fade so edges are darker */}
+                    &lt;div className="absolute inset-0 bg-radial-gradient from-transparent via-[#050505]/40 to-[#050505] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at center, transparent 0%, #050505 70%)' }}&gt;&lt;/div&gt;
+                &lt;/div&gt;
+
+                {/* SVG Wires Layer */}
+                &lt;svg className="fixed inset-0 w-full h-full pointer-events-none z-10" style={{ filter: 'drop-shadow(0 0 8px rgba(99,102,241,0.5))' }}&gt;
+                    &lt;AnimatePresence&gt;
+                        {nodes.map(node =&gt; {
+                            const targetX = node.x + 225; // center of node approx
+                            const targetY = node.y + 100; // middle of node approx
+                            const controlX = centerX + (targetX - centerX) / 2;
+                            return (
+                                &lt;motion.path
+                                    key={`wire-${node.id}`}
+                                    initial={{ pathLength: 0, opacity: 0 }}
+                                    animate={{ pathLength: 1, opacity: 0.3 }}
+                                    exit={{ pathLength: 0, opacity: 0 }}
+                                    transition={{ duration: 1, ease: "easeInOut" }}
+                                    d={`M ${centerX} ${centerY} Q ${controlX} ${centerY} ${targetX} ${targetY}`}
+                                    fill="none"
+                                    stroke="url(#wireGradient)"
+                                    strokeWidth="2"
+                                    strokeDasharray="5,5"
+                                    className="animate-[dash_30s_linear_infinite]"
+                                /&gt;
+                            );
+                        })}
+                    &lt;/AnimatePresence&gt;
+                    &lt;defs&gt;
+                        &lt;linearGradient id="wireGradient" x1="0%" y1="0%" x2="100%" y2="100%"&gt;
+                            &lt;stop offset="0%" stopColor="#22d3ee" /&gt;
+                            &lt;stop offset="50%" stopColor="#6366f1" /&gt;
+                            &lt;stop offset="100%" stopColor="#a855f7" /&gt;
+                        &lt;/linearGradient&gt;
+                    &lt;/defs&gt;
+                &lt;/svg&gt;
+                &lt;style jsx&gt;{`
+                @keyframes dash { to { stroke-dashoffset: -1000; } }
+            `}&lt;/style&gt;
+
+                {/* Top Navigation Bar */}
+                &lt;nav className="fixed top-0 w-full z-50 bg-[#09090b]/40 backdrop-blur-2xl border-b border-white/[0.05]"&gt;
+                    &lt;div className="max-w-[1800px] mx-auto px-6 h-16 flex items-center justify-between"&gt;
+                        &lt;div className="flex items-center gap-3 cursor-pointer group"&gt;
+                            &lt;div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center group-hover:bg-indigo-500/20 transition-all shadow-[0_0_15px_rgba(99,102,241,0.2)]"&gt;
+                                &lt;Sparkles className="text-indigo-400 w-4 h-4" /&gt;
+                            &lt;/div&gt;
+                            &lt;span className="text-xl font-bold tracking-tight text-white font-display"&gt;Gistly&lt;span className="text-indigo-400"&gt;.ai&lt;/span&gt; &lt;span className="text-[10px] text-zinc-500 uppercase tracking-widest ml-2 bg-white/5 py-1 px-2 rounded-full border border-white/5"&gt;Canvas Mode&lt;/span&gt;&lt;/span&gt;
+                        &lt;/div&gt;
+
+                        &lt;div className="hidden md:flex items-center gap-6 text-sm font-medium"&gt;
+                            &lt;button onClick={() =&gt; setIsNewsOpen(true)} className="text-red-400 hover:text-red-300 font-bold tracking-widest uppercase text-xs flex items-center gap-2 border border-red-500/20 bg-red-500/10 px-3 py-1.5 rounded-full shadow-[0_0_15px_rgba(239,68,68,0.2)]"&gt;
+                                &lt;Radio className="w-3.5 h-3.5 animate-pulse" /&gt; Live News
+                            &lt;/button&gt;
+                            &lt;button onClick={() =&gt; setIsGuideOpen(true)} className="text-zinc-400 hover:text-white transition-colors"&gt;Guide&lt;/button&gt;
+                            &lt;button onClick={() =&gt; setIsPricingOpen(true)} className="text-indigo-400 hover:text-indigo-300 font-bold transition-colors flex items-center gap-2"&gt;
+                                &lt;Star className="w-4 h-4 fill-indigo-400/20" /&gt; Pricing
+                            &lt;/button&gt;
+                            &lt;button onClick={() =&gt; setIsAboutOpen(true)} className="text-zinc-400 hover:text-white transition-colors"&gt;About Us&lt;/button&gt;
+                            &lt;button onClick={() =&gt; setIsContactOpen(true)} className="text-zinc-400 hover:text-white transition-colors"&gt;Contact&lt;/button&gt;
+                            &lt;div className="flex items-center gap-2 text-indigo-400/90 bg-indigo-400/10 px-3 py-1.5 rounded-full border border-indigo-400/20 cursor-default select-none pointer-events-none"&gt;
+                                &lt;div className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"&gt;&lt;/div&gt;
+                                &lt;span className="text-xs font-semibold tracking-wide uppercase"&gt;Core Online&lt;/span&gt;
+                            &lt;/div&gt;
+                            &lt;SignedOut&gt;
+                                &lt;SignInButton mode="modal"&gt;
+                                    &lt;button className="bg-white text-black px-4 py-2 rounded-lg font-semibold hover:bg-zinc-200 transition-all text-xs"&gt;Sign In&lt;/button&gt;
+                                &lt;/SignInButton&gt;
+                            &lt;/SignedOut&gt;
+                            &lt;SignedIn&gt;
+                                &lt;UserButton appearance={{ elements: { userButtonAvatarBox: "w-8 h-8" } }} /&gt;
+                            &lt;/SignedIn&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                &lt;/nav&gt;
+
+                {/* Floating Left Side Dashboard / Tool Dock (Desktop &amp; Mobile Sheet) */}
+                &lt;motion.div
+                    initial={{ x: -100, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    className={cn(
+                        "fixed z-40 bg-[#111113]/60 backdrop-blur-3xl border border-white/10 flex flex-col shadow-2xl transition-all duration-300",
+                        isMobileMenuOpen
+                            ? "inset-x-0 bottom-20 top-20 rounded-t-3xl p-5 md:left-6 md:top-24 md:bottom-6 md:w-72 md:rounded-3xl"
+                            : "hidden md:flex left-6 top-24 bottom-6 w-72 rounded-3xl p-5"
+                    )}
+                &gt;
+                    &lt;div className="mb-6 space-y-4"&gt;
+                        &lt;div className="flex items-center justify-between"&gt;
+                            &lt;div&gt;
+                                &lt;h2 className="text-sm font-bold text-white uppercase tracking-widest mb-1 flex items-center gap-2"&gt;&lt;LayoutDashboard className="w-4 h-4 text-indigo-400" /&gt; Tool Hub&lt;/h2&gt;
+                                &lt;p className="text-[10px] text-zinc-500 font-mono tracking-tighter"&gt;NODE DEPLOYMENT CORE&lt;/p&gt;
+                            &lt;/div&gt;
+                            &lt;div className="flex gap-2"&gt;
+                                &lt;button onClick={clearCanvas} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-zinc-500 hover:text-white transition-colors border border-white/5" title="New Canvas"&gt;&lt;FilePlus className="w-4 h-4" /&gt;&lt;/button&gt;
+                                &lt;button onClick={fetchHistory} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-zinc-500 hover:text-indigo-400 transition-colors border border-white/5" title="Neural History"&gt;&lt;History className="w-4 h-4" /&gt;&lt;/button&gt;
+                            &lt;/div&gt;
+                        &lt;/div&gt;
+
+                        &lt;div className="flex items-center gap-2 bg-black/40 border border-white/5 rounded-xl p-2 pl-3"&gt;
+                            &lt;input
+                                value={workflowName}
+                                onChange={(e) =&gt; setWorkflowName(e.target.value)}
+                                className="bg-transparent text-[11px] text-zinc-300 outline-none w-full"
+                                placeholder="Architecture Name..."
+                            /&gt;
+                            &lt;button
+                                onClick={saveWorkflow}
+                                disabled={isSaving || nodes.length === 0}
+                                className="p-1.5 bg-indigo-500 hover:bg-indigo-400 disabled:bg-zinc-800 disabled:text-zinc-600 rounded-lg transition-all"
+                            &gt;
+                                {isSaving ? &lt;Loader2 className="w-3.5 h-3.5 animate-spin text-white" /&gt; : &lt;Save className="w-3.5 h-3.5 text-white" /&gt;}
+                            &lt;/button&gt;
+                        &lt;/div&gt;
+
+                        &lt;div className="relative group/search"&gt;
+                            &lt;div className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within/search:text-indigo-400 transition-colors"&gt;
+                                &lt;Search className="w-3.5 h-3.5" /&gt;
+                            &lt;/div&gt;
+                            &lt;input
+                                value={searchTerm}
+                                onChange={(e) =&gt; setSearchTerm(e.target.value)}
+                                className="w-full bg-black/40 border border-white/5 focus:border-indigo-500/50 rounded-xl py-2 pl-9 pr-4 text-[11px] text-zinc-300 outline-none transition-all placeholder:text-zinc-700"
+                                placeholder="Search nodes..."
+                            /&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+
+                    {/* Filters */}
+                    &lt;div className="flex flex-wrap gap-2 mb-6 border-b border-white/5 pb-4"&gt;
+                        {categories.map((cat) =&gt; (
+                            &lt;button
+                                key={cat}
+                                onClick={() =&gt; setSelectedCategory(cat)}
+                                className={cn(
+                                    "px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all",
+                                    selectedCategory === cat
+                                        ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
+                                        : "bg-white/5 text-zinc-500 hover:bg-white/10 hover:text-white border border-transparent"
+                                )}
+                            &gt;
+                                {cat}
+                            &lt;/button&gt;
+                        ))}
+                    &lt;/div&gt;
+
+                    {/* Tool List */}
+                    &lt;div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent pr-2 flex flex-col gap-3"&gt;
+                        {filteredTools.map((tool) =&gt; (
+                            &lt;div
+                                key={tool.id}
+                                onClick={() =&gt; addNode(tool.id)}
+                                className="group bg-black/40 border border-white/5 hover:border-indigo-500/30 p-3 rounded-xl transition-all cursor-pointer flex items-center gap-3 hover:bg-white/[0.02]"
+                            &gt;
+                                &lt;div className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border", tool.bg, tool.border)}&gt;
+                                    &lt;tool.icon className={cn("w-5 h-5", tool.color)} /&gt;
+                                &lt;/div&gt;
+                                &lt;div&gt;
+                                    &lt;h3 className="text-sm font-bold text-zinc-200 group-hover:text-indigo-400 transition-colors"&gt;{tool.name}&lt;/h3&gt;
+                                    &lt;p className="text-[10px] text-zinc-600 line-clamp-1"&gt;{tool.description}&lt;/p&gt;
+                                &lt;/div&gt;
+                            &lt;/div&gt;
+                        ))}
+                    &lt;/div&gt;
+
+                    &lt;div className="mt-4 pt-4 border-t border-white/5 text-[9px] text-center text-zinc-600 font-mono"&gt;
+                        System Architecture Ready
+                    &lt;/div&gt;
+                &lt;/motion.div&gt;
+
+                {/* The Infinite Canvas Content */}
+                &lt;div className="absolute inset-0 z-20 pointer-events-none"&gt;
+                    &lt;AnimatePresence&gt;
+                        {nodes.length === 0 &amp;&amp; (
+                            &lt;motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute top-1/2 left-[calc(50%+144px)] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center text-center pointer-events-none"
+                            &gt;
+                                &lt;div className="w-24 h-24 rounded-full border border-indigo-500/30 flex items-center justify-center p-3 animate-[pulse_4s_ease-in-out_infinite] mb-6 relative"&gt;
+                                    &lt;div className="absolute inset-0 border border-cyan-400/20 rounded-full animate-ping pointer-events-none" style={{ animationDuration: '3s' }}&gt;&lt;/div&gt;
+                                    &lt;Sparkles className="w-8 h-8 text-indigo-400 opacity-50" /&gt;
+                                &lt;/div&gt;
+                                &lt;h2 className="text-2xl font-bold text-white mb-2 font-display tracking-tight"&gt;Infinite Architecture&lt;/h2&gt;
+                                &lt;p className="text-sm text-zinc-500 max-w-sm"&gt;
+                                    Create an unstructured intelligence pipeline. Select nodes from the Hub on your left to deploy microservices into the workspace.
+                                &lt;/p&gt;
+                            &lt;/motion.div&gt;
+                        )}
+                    &lt;/AnimatePresence&gt;
+
+                    {nodes.map(node =&gt; (
+                        &lt;DraggableNode
+                            key={node.id}
+                            data={node}
+                            removeNode={removeNode}
+                            updateNodePosition={updateNodePosition}
+                        /&gt;
+                    ))}
+                &lt;/div&gt;
+
+                {/* Guide Modal */}
+                &lt;AnimatePresence&gt;
+                    {isGuideOpen &amp;&amp; (
+                        &lt;motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
+                        &gt;
+                            &lt;motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                                className="bg-[#111113]/70 backdrop-blur-2xl border border-white/10 rounded-3xl max-w-xl w-full shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] relative overflow-hidden group flex flex-col max-h-[90vh]"
+                            &gt;
+                                &lt;div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" /&gt;
+                                &lt;button
+                                    onClick={() =&gt; setIsGuideOpen(false)}
+                                    className="absolute top-6 right-6 text-zinc-500 hover:text-white transition-colors z-[100]"
+                                &gt;
+                                    &lt;X className="w-5 h-5" /&gt;
+                                &lt;/button&gt;
+
+                                &lt;div className="p-8 relative z-10 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 w-full"&gt;
+                                    &lt;h3 className="text-2xl font-bold text-white mb-2 tracking-tight font-display"&gt;Infinite Canvas Guide&lt;/h3&gt;
+                                    &lt;p className="text-zinc-400 text-sm mb-6 leading-relaxed"&gt;
+                                        Welcome to the most advanced AI workstation.
+                                    &lt;/p&gt;
+
+                                    &lt;div className="space-y-4"&gt;
+                                        &lt;div className="flex items-start gap-3"&gt;
+                                            &lt;div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold mt-0.5 border border-indigo-500/30 shrink-0"&gt;1&lt;/div&gt;
+                                            &lt;div&gt;
+                                                &lt;h4 className="text-zinc-200 font-semibold text-sm"&gt;Deploy Nodes&lt;/h4&gt;
+                                                &lt;p className="text-zinc-500 text-xs mt-1 leading-relaxed"&gt;Click any tool on the left dashboard to spawn a floating neural node into your workspace.&lt;/p&gt;
+                                            &lt;/div&gt;
+                                        &lt;/div&gt;
+                                        &lt;div className="flex items-start gap-3"&gt;
+                                            &lt;div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold mt-0.5 border border-indigo-500/30 shrink-0"&gt;2&lt;/div&gt;
+                                            &lt;div&gt;
+                                                &lt;h4 className="text-zinc-200 font-semibold text-sm"&gt;Arrange &amp; Build&lt;/h4&gt;
+                                                &lt;p className="text-zinc-500 text-xs mt-1 leading-relaxed"&gt;Drag nodes anywhere on the screen. The central AI core will draw neural links to active processes automatically.&lt;/p&gt;
+                                            &lt;/div&gt;
+                                        &lt;/div&gt;
+                                        &lt;div className="flex items-start gap-3"&gt;
+                                            &lt;div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold mt-0.5 border border-indigo-500/30 shrink-0"&gt;3&lt;/div&gt;
+                                            &lt;div&gt;
+                                                &lt;h4 className="text-zinc-200 font-semibold text-sm"&gt;Execute in Parallel&lt;/h4&gt;
+                                                &lt;p className="text-zinc-500 text-xs mt-1 leading-relaxed"&gt;Run multiple tools at the exact same time. The core handles concurrent processing flawlessly.&lt;/p&gt;
+                                            &lt;/div&gt;
+                                        &lt;/div&gt;
+                                    &lt;/div&gt;
+
+                                    &lt;div className="mt-8 pt-6 border-t border-white/5 flex justify-end"&gt;
+                                        &lt;button
+                                            onClick={() =&gt; setIsGuideOpen(false)}
+                                            className="px-5 py-2 bg-white text-black text-sm font-bold rounded-xl hover:bg-zinc-200 transition-all active:scale-[0.98]"
+                                        &gt;
+                                            Initialize System
+                                        &lt;/button&gt;
+                                    &lt;/div&gt;
+                                &lt;/div&gt;
+                            &lt;/motion.div&gt;
+                        &lt;/motion.div&gt;
+                    )}
+                &lt;/AnimatePresence&gt;
+
+                {/* Neural Uplink (Contact) Modal */}
+                &lt;AnimatePresence&gt;
+                    {isContactOpen &amp;&amp; (
+                        &lt;motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-xl p-4"
+                        &gt;
+                            &lt;div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:50px_50px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none"&gt;&lt;/div&gt;
+
+                            &lt;motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                                className="bg-[#0c0c0e]/90 border border-indigo-500/20 p-0 rounded-3xl max-w-2xl w-full shadow-[0_0_50px_rgba(99,102,241,0.1)] relative overflow-hidden flex flex-col max-h-[90vh]"
+                            &gt;
+                                &lt;div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-indigo-500 to-purple-500 z-50"&gt;&lt;/div&gt;
+
+                                &lt;button
+                                    onClick={() =&gt; setIsContactOpen(false)}
+                                    className="absolute top-6 right-6 text-zinc-500 hover:text-indigo-400 transition-colors z-[100] bg-black/50 p-2 rounded-full backdrop-blur-md"
+                                &gt;
+                                    &lt;X className="w-5 h-5" /&gt;
+                                &lt;/button&gt;
+
+                                &lt;div className="p-8 md:p-10 relative z-10 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 w-full"&gt;
+                                    &lt;div className="flex items-center gap-4 mb-2"&gt;
+                                        &lt;div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center"&gt;
+                                            &lt;Orbit className="w-6 h-6 text-indigo-400 animate-[spin_10s_linear_infinite]" /&gt;
+                                        &lt;/div&gt;
+                                        &lt;div&gt;
+                                            &lt;h3 className="text-3xl font-bold text-white tracking-tight font-display flex items-center gap-2"&gt;
+                                                Neural &lt;span className="text-indigo-400"&gt;Uplink&lt;/span&gt;
+                                            &lt;/h3&gt;
+                                            &lt;p className="text-zinc-500 text-xs font-mono uppercase tracking-widest mt-1"&gt;Direct Secure Transmission&lt;/p&gt;
+                                        &lt;/div&gt;
+                                    &lt;/div&gt;
+
+                                    &lt;p className="text-zinc-400 text-sm mt-6 mb-8 leading-relaxed"&gt;
+                                        Initialize a secure channel to our engineering core. Whether you seek custom integrations, encountered an anomaly, or wish to forge an alliance, our nodes are receptive.
+                                    &lt;/p&gt;
+
+                                    &lt;div className="bg-black/50 border border-indigo-500/20 rounded-2xl p-6 mb-8 relative group overflow-hidden"&gt;
+                                        &lt;div className="absolute inset-0 bg-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity"&gt;&lt;/div&gt;
+                                        &lt;div className="flex items-center gap-4 relative z-10"&gt;
+                                            &lt;div className="bg-indigo-500/20 p-3 rounded-full border border-indigo-500/30"&gt;
+                                                &lt;Mail className="w-6 h-6 text-indigo-300" /&gt;
+                                            &lt;/div&gt;
+                                            &lt;div&gt;
+                                                &lt;p className="text-xs text-zinc-500 uppercase font-bold tracking-widest mb-1"&gt;Direct Email (Manual)&lt;/p&gt;
+                                                &lt;a href="mailto:contact@gistly.site" className="text-xl font-mono text-white hover:text-indigo-400 transition-colors font-bold tracking-tighter"&gt;
+                                                    contact&lt;span className="text-indigo-400"&gt;@&lt;/span&gt;gistly.site
+                                                &lt;/a&gt;
+                                            &lt;/div&gt;
+                                        &lt;/div&gt;
+                                    &lt;/div&gt;
+
+                                    &lt;form onSubmit={handleContactSubmit} className="mb-8 space-y-4"&gt;
+                                        &lt;div className="grid grid-cols-2 gap-4"&gt;
+                                            &lt;div&gt;
+                                                &lt;label className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-2 block"&gt;Agent Name&lt;/label&gt;
+                                                &lt;input required value={contactName} onChange={(e) =&gt; setContactName(e.target.value)} type="text" placeholder="John Doe" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono" /&gt;
+                                            &lt;/div&gt;
+                                            &lt;div&gt;
+                                                &lt;label className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-2 block"&gt;Return Address&lt;/label&gt;
+                                                &lt;input required value={contactEmail} onChange={(e) =&gt; setContactEmail(e.target.value)} type="email" placeholder="john@example.com" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono" /&gt;
+                                            &lt;/div&gt;
+                                        &lt;/div&gt;
+                                        &lt;div&gt;
+                                            &lt;label className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-2 block"&gt;Encrypted Payload&lt;/label&gt;
+                                            &lt;textarea required value={contactMessage} onChange={(e) =&gt; setContactMessage(e.target.value)} rows={3} placeholder="How can we assist you?" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-sans resize-none"&gt;&lt;/textarea&gt;
+                                        &lt;/div&gt;
+
+                                        &lt;div className="flex items-center justify-between mt-2"&gt;
+                                            &lt;div className="flex-1"&gt;
+                                                {contactStatus &amp;&amp; (
+                                                    &lt;div className={cn("text-xs font-mono py-1.5 px-3 rounded-lg inline-block border", contactStatus.type === 'success' ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-red-500/10 text-red-500 border-red-500/20")}&gt;
+                                                        {contactStatus.text}
+                                                    &lt;/div&gt;
+                                                )}
+                                            &lt;/div&gt;
+                                            &lt;button disabled={isSendingContact} type="submit" className="px-6 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold uppercase tracking-widest rounded-xl transition-all shadow-[0_0_20px_rgba(99,102,241,0.4)] disabled:opacity-50 flex items-center gap-2"&gt;
+                                                {isSendingContact ? &lt;Loader2 className="w-4 h-4 animate-spin" /&gt; : &lt;Send className="w-4 h-4" /&gt;}
+                                                {isSendingContact ? 'Transmitting...' : 'Send Message'}
+                                            &lt;/button&gt;
+                                        &lt;/div&gt;
+                                    &lt;/form&gt;
+
+                                    &lt;h4 className="text-sm font-bold text-white mb-4 uppercase tracking-widest flex items-center gap-2"&gt;
+                                        &lt;Database className="w-4 h-4 text-indigo-400" /&gt; Frequently Queried Sectors (FAQ)
+                                    &lt;/h4&gt;
+
+                                    &lt;div className="space-y-3"&gt;
+                                        &lt;div className="bg-white/5 border border-white/10 p-4 rounded-xl hover:bg-white/10 transition-colors"&gt;
+                                            &lt;h5 className="font-bold text-zinc-200 text-sm flex items-center gap-2 mb-2"&gt;
+                                                &lt;Terminal className="w-4 h-4 text-cyan-400" /&gt; What is the API rate limit?
+                                            &lt;/h5&gt;
+                                            &lt;p className="text-zinc-500 text-xs leading-relaxed"&gt;Standard nodes guarantee up to 100 requests per minute. Enterprise compute clusters available upon negotiation.&lt;/p&gt;
+                                        &lt;/div&gt;
+                                        &lt;div className="bg-white/5 border border-white/10 p-4 rounded-xl hover:bg-white/10 transition-colors"&gt;
+                                            &lt;h5 className="font-bold text-zinc-200 text-sm flex items-center gap-2 mb-2"&gt;
+                                                &lt;Shield className="w-4 h-4 text-emerald-400" /&gt; Is my data retained?
+                                            &lt;/h5&gt;
+                                            &lt;p className="text-zinc-500 text-xs leading-relaxed"&gt;Negative. All transmission protocols are end-to-end encrypted. We employ a strict zero-retention policy natively; data evaporates post-processing.&lt;/p&gt;
+                                        &lt;/div&gt;
+                                        &lt;div className="bg-white/5 border border-white/10 p-4 rounded-xl hover:bg-white/10 transition-colors"&gt;
+                                            &lt;h5 className="font-bold text-zinc-200 text-sm flex items-center gap-2 mb-2"&gt;
+                                                &lt;Cpu className="w-4 h-4 text-purple-400" /&gt; Custom AI Model Training?
+                                            &lt;/h5&gt;
+                                            &lt;p className="text-zinc-500 text-xs leading-relaxed"&gt;We can partition dedicated architectures for your unique datasets. Reach out to the email above to initialize discussions.&lt;/p&gt;
+                                        &lt;/div&gt;
+                                    &lt;/div&gt;
+
+                                    &lt;div className="mt-8 flex justify-end"&gt;
+                                        &lt;button
+                                            onClick={() =&gt; setIsContactOpen(false)}
+                                            className="px-6 py-2.5 bg-zinc-800 text-zinc-300 border border-white/5 text-sm font-bold uppercase tracking-widest rounded-xl hover:bg-zinc-700 hover:text-white transition-all shadow-[0_0_15px_rgba(0,0,0,0.2)]"
+                                        &gt;
+                                            Close Uplink
+                                        &lt;/button&gt;
+                                    &lt;/div&gt;
+                                &lt;/div&gt;
+                            &lt;/motion.div&gt;
+                        &lt;/motion.div&gt;
+                    )}
+                &lt;/AnimatePresence&gt;
+
+                {/* About The Nexus (About Us) Modal */}
+                &lt;AnimatePresence&gt;
+                    {isAboutOpen &amp;&amp; (
+                        &lt;motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4"
+                        &gt;
+                            &lt;motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: -20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                                className="bg-[#09090b] border border-cyan-500/20 p-0 rounded-3xl max-w-3xl w-full shadow-[0_0_80px_rgba(34,211,238,0.05)] relative overflow-hidden flex flex-col max-h-[90vh]"
+                            &gt;
+                                &lt;div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none"&gt;&lt;/div&gt;
+
+                                &lt;button
+                                    onClick={() =&gt; setIsAboutOpen(false)}
+                                    className="absolute top-6 right-6 text-zinc-500 hover:text-cyan-400 transition-colors z-[100] bg-black/50 p-2 rounded-full backdrop-blur-md"
+                                &gt;
+                                    &lt;X className="w-5 h-5" /&gt;
+                                &lt;/button&gt;
+
+                                &lt;div className="grid grid-cols-1 md:grid-cols-2 relative z-10 overflow-y-auto scrollbar-thin scrollbar-thumb-cyan-500/20 w-full flex-1"&gt;
+                                    &lt;div className="p-8 md:p-10 border-b md:border-b-0 md:border-r border-white/5 bg-white/[0.02] flex flex-col justify-between"&gt;
+                                        &lt;div&gt;
+                                            &lt;div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mb-6"&gt;
+                                                &lt;Fingerprint className="w-6 h-6 text-cyan-400" /&gt;
+                                            &lt;/div&gt;
+                                            &lt;h3 className="text-4xl font-black text-white tracking-tighter font-display leading-tight mb-4"&gt;
+                                                The World's 1st &lt;br /&gt;
+                                                &lt;span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-indigo-400 to-purple-400"&gt;Multitasking AI Hub.&lt;/span&gt;
+                                            &lt;/h3&gt;
+                                            &lt;p className="text-zinc-400 text-sm leading-relaxed mb-6 border-l-2 border-cyan-500/30 pl-4 py-1 italic"&gt;
+                                                "Not just another chatbot. We engineered the ultimate unified workspace for modern intelligence automation."
+                                            &lt;/p&gt;
+                                        &lt;/div&gt;
+
+                                        &lt;div className="mt-8"&gt;
+                                            &lt;div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-3 flex items-center gap-2"&gt;
+                                                &lt;Zap className="w-3 h-3 text-cyan-500" /&gt; Powered by Tier-1 Engines
+                                            &lt;/div&gt;
+                                            &lt;div className="bg-black/40 rounded-xl border border-white/5 overflow-hidden py-3"&gt;
+                                                &lt;Marquee gradient={true} gradientColor="[0,0,0]" gradientWidth={40} speed={40}&gt;
+                                                    &lt;div className="flex items-center gap-8 px-4 text-xs font-bold text-zinc-300 tracking-widest uppercase"&gt;
+                                                        &lt;span className="flex items-center gap-2"&gt;&lt;Sparkles className="w-4 h-4 text-blue-400" /&gt; Google Gemini&lt;/span&gt;
+                                                        &lt;span className="flex items-center gap-2"&gt;&lt;Terminal className="w-4 h-4 text-purple-600" /&gt; Antigravity Core&lt;/span&gt;
+                                                        &lt;span className="flex items-center gap-2"&gt;&lt;ImageIcon className="w-4 h-4 text-pink-400" /&gt; Leonardo.Ai&lt;/span&gt;
+                                                        &lt;span className="flex items-center gap-2"&gt;&lt;Globe className="w-4 h-4 text-emerald-400" /&gt; Apify&lt;/span&gt;
+                                                        &lt;span className="flex items-center gap-2"&gt;&lt;Cpu className="w-4 h-4 text-orange-400" /&gt; Groq Llama 3&lt;/span&gt;
+                                                        &lt;span className="flex items-center gap-2"&gt;&lt;Database className="w-4 h-4 text-emerald-500" /&gt; Supabase&lt;/span&gt;
+                                                        &lt;span className="flex items-center gap-2"&gt;&lt;Code className="w-4 h-4 text-cyan-400" /&gt; React Ecosystem&lt;/span&gt;
+                                                    &lt;/div&gt;
+                                                &lt;/Marquee&gt;
+                                            &lt;/div&gt;
+                                        &lt;/div&gt;
+                                    &lt;/div&gt;
+
+                                    &lt;div className="p-8 md:p-10 flex flex-col justify-center"&gt;
+                                        &lt;h4 className="text-sm font-bold text-white mb-6 uppercase tracking-widest flex items-center gap-2"&gt;
+                                            &lt;Orbit className="w-4 h-4 text-indigo-400" /&gt; The Gistly Ecosystem
+                                        &lt;/h4&gt;
+
+                                        &lt;div className="space-y-6 text-sm text-zinc-300 leading-relaxed"&gt;
+                                            &lt;p&gt;
+                                                &lt;strong className="text-white"&gt;Gistly.site&lt;/strong&gt; merges the distinct powers of the world's most capable AI networks into a single, seamless infinite canvas.
+                                            &lt;/p&gt;
+
+                                            &lt;div className="grid grid-cols-2 gap-4 mt-6"&gt;
+                                                &lt;div className="bg-white/[0.02] border border-white/5 p-4 rounded-2xl hover:border-purple-500/30 transition-all col-span-2 shadow-[0_0_15px_rgba(168,85,247,0.05)]"&gt;
+                                                    &lt;div className="flex items-center gap-3 mb-2"&gt;
+                                                        &lt;div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center"&gt;
+                                                            &lt;Terminal className="w-4 h-4 text-purple-400" /&gt;
+                                                        &lt;/div&gt;
+                                                        &lt;h5 className="text-xs font-bold text-white uppercase tracking-wider"&gt;Antigravity Intelligence&lt;/h5&gt;
+                                                    &lt;/div&gt;
+                                                    &lt;p className="text-[10px] text-zinc-400 mt-2"&gt;The core agentic AI software engineer. Built the entire platform infrastructure, algorithms, and 100% of the codebase autonomously.&lt;/p&gt;
+                                                &lt;/div&gt;
+                                                &lt;div className="bg-white/[0.02] border border-white/5 p-4 rounded-2xl hover:border-cyan-500/30 transition-all"&gt;
+                                                    &lt;div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center mb-3"&gt;
+                                                        &lt;Sparkles className="w-4 h-4 text-blue-400" /&gt;
+                                                    &lt;/div&gt;
+                                                    &lt;h5 className="text-xs font-bold text-white uppercase tracking-wider mb-1"&gt;Deep Logic&lt;/h5&gt;
+                                                    &lt;p className="text-[10px] text-zinc-500"&gt;Powered by Gemini for advanced reasoning.&lt;/p&gt;
+                                                &lt;/div&gt;
+                                                &lt;div className="bg-white/[0.02] border border-white/5 p-4 rounded-2xl hover:border-pink-500/30 transition-all"&gt;
+                                                    &lt;div className="w-8 h-8 rounded-full bg-pink-500/10 flex items-center justify-center mb-3"&gt;
+                                                        &lt;ImageIcon className="w-4 h-4 text-pink-400" /&gt;
+                                                    &lt;/div&gt;
+                                                    &lt;h5 className="text-xs font-bold text-white uppercase tracking-wider mb-1"&gt;Visual Arts&lt;/h5&gt;
+                                                    &lt;p className="text-[10px] text-zinc-500"&gt;Leonardo engine for hyper-real generation.&lt;/p&gt;
+                                                &lt;/div&gt;
+                                                &lt;div className="bg-white/[0.02] border border-white/5 p-4 rounded-2xl hover:border-emerald-500/30 transition-all"&gt;
+                                                    &lt;div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center mb-3"&gt;
+                                                        &lt;Globe className="w-4 h-4 text-emerald-400" /&gt;
+                                                    &lt;/div&gt;
+                                                    &lt;h5 className="text-xs font-bold text-white uppercase tracking-wider mb-1"&gt;Live Web Intel&lt;/h5&gt;
+                                                    &lt;p className="text-[10px] text-zinc-500"&gt;Real-time data scraping driven by Apify.&lt;/p&gt;
+                                                &lt;/div&gt;
+                                                &lt;div className="bg-white/[0.02] border border-white/5 p-4 rounded-2xl hover:border-orange-500/30 transition-all"&gt;
+                                                    &lt;div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center mb-3"&gt;
+                                                        &lt;Zap className="w-4 h-4 text-orange-400" /&gt;
+                                                    &lt;/div&gt;
+                                                    &lt;h5 className="text-xs font-bold text-white uppercase tracking-wider mb-1"&gt;Instant Speed&lt;/h5&gt;
+                                                    &lt;p className="text-[10px] text-zinc-500"&gt;Groq LPUs for zero-latency communication.&lt;/p&gt;
+                                                &lt;/div&gt;
+                                            &lt;/div&gt;
+
+                                            &lt;p className="text-xs text-zinc-500 mt-6 border-l-2 border-indigo-500/30 pl-3"&gt;
+                                                Why switch between 5 tabs when you can architect the future from one terminal? Welcome to the Nexus.
+                                            &lt;/p&gt;
+                                        &lt;/div&gt;
+                                    &lt;/div&gt;
+                                &lt;/div&gt;
+                            &lt;/motion.div&gt;
+                        &lt;/motion.div&gt;
+                    )}
+                &lt;/AnimatePresence&gt;
+
+                &lt;PricingModal isOpen={isPricingOpen} onClose={() =&gt; setIsPricingOpen(false)} /&gt;
+
+                {/* Workflow History Modal */}
+                &lt;AnimatePresence&gt;
+                    {isHistoryOpen &amp;&amp; (
+                        &lt;motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-xl p-4"
+                        &gt;
+                            &lt;motion.div
+                                initial={{ scale: 0.95, y: 10 }}
+                                animate={{ scale: 1, y: 0 }}
+                                exit={{ scale: 0.95, y: 10 }}
+                                className="bg-[#111113]/70 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl max-w-md w-full shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] relative overflow-hidden group"
+                            &gt;
+                                &lt;div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" /&gt;
+                                &lt;button
+                                    onClick={() =&gt; setIsHistoryOpen(false)}
+                                    className="absolute top-6 right-6 text-zinc-500 hover:text-white transition-colors"
+                                &gt;
+                                    &lt;X className="w-5 h-5" /&gt;
+                                &lt;/button&gt;
+
+                                &lt;h3 className="text-2xl font-bold text-white mb-2 tracking-tight flex items-center gap-3"&gt;
+                                    &lt;History className="w-6 h-6 text-indigo-400" /&gt; Workflow History
+                                &lt;/h3&gt;
+                                &lt;p className="text-zinc-400 text-sm mb-6 leading-relaxed"&gt;
+                                    Load previously deployed neural architectures.
+                                &lt;/p&gt;
+
+                                &lt;div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"&gt;
+                                    {history.length === 0 ? (
+                                        &lt;div className="text-center py-10 text-zinc-600 font-mono text-xs"&gt;
+                                            NO ARCHIVES FOUND
+                                        &lt;/div&gt;
+                                    ) : (
+                                        history.map((flow) =&gt; (
+                                            &lt;div
+                                                key={flow.id}
+                                                onClick={() =&gt; loadWorkflow(flow.id)}
+                                                className="group bg-white/[0.03] border border-white/5 p-4 rounded-2xl hover:border-indigo-500/30 transition-all cursor-pointer flex items-center justify-between"
+                                            &gt;
+                                                &lt;div className="flex items-center gap-4"&gt;
+                                                    &lt;div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20 group-hover:bg-indigo-500/20"&gt;
+                                                        &lt;FolderOpen className="w-5 h-5 text-indigo-400" /&gt;
+                                                    &lt;/div&gt;
+                                                    &lt;div&gt;
+                                                        &lt;h4 className="text-zinc-200 font-bold text-sm group-hover:text-white transition-colors"&gt;{flow.name}&lt;/h4&gt;
+                                                        &lt;p className="text-[10px] text-zinc-600 font-mono"&gt;{new Date(flow.created_at).toLocaleDateString()}&lt;/p&gt;
+                                                    &lt;/div&gt;
+                                                &lt;/div&gt;
+                                                &lt;ChevronRight className="w-4 h-4 text-zinc-700 group-hover:text-white transition-all transform group-hover:translate-x-1" /&gt;
+                                            &lt;/div&gt;
+                                        ))
+                                    )}
+                                &lt;/div&gt;
+                            &lt;/motion.div&gt;
+                        &lt;/motion.div&gt;
+                    )}
+                &lt;/AnimatePresence&gt;
+
+                &lt;GistlyVoiceAssistant /&gt;
+
+                {/* Mobile Bottom Navigation App Bar */}
+                &lt;div className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-[#09090b]/80 backdrop-blur-2xl border-t border-white/10 z-[100] pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.5)]"&gt;
+                    &lt;div className="flex items-center justify-around h-full px-2"&gt;
+                        &lt;button
+                            onClick={() =&gt; setIsMobileMenuOpen(!isMobileMenuOpen)}
+                            className={cn("flex flex-col items-center justify-center w-16 h-full gap-1 transition-colors", isMobileMenuOpen ? "text-indigo-400" : "text-zinc-500 hover:text-zinc-300")}
+                        &gt;
+                            &lt;LayoutDashboard className="w-6 h-6" /&gt;
+                            &lt;span className="text-[10px] font-bold tracking-wider"&gt;Tools&lt;/span&gt;
+                        &lt;/button&gt;
+
+                        &lt;button onClick={fetchHistory} className="flex flex-col items-center justify-center w-16 h-full gap-1 text-zinc-500 hover:text-indigo-400 transition-colors"&gt;
+                            &lt;History className="w-6 h-6" /&gt;
+                            &lt;span className="text-[10px] font-bold tracking-wider"&gt;History&lt;/span&gt;
+                        &lt;/button&gt;
+
+                        {/* Floating FAB - Center Clear Canvas Action */}
+                        &lt;div className="relative -top-6 flex flex-col items-center"&gt;
+                            &lt;button
+                                onClick={clearCanvas}
+                                style={{ WebkitTapHighlightColor: 'transparent' }}
+                                className="w-14 h-14 bg-gradient-to-tr from-indigo-600 to-cyan-500 rounded-full flex items-center justify-center shadow-[0_10px_30px_rgba(99,102,241,0.5)] border-2 border-[#09090b] text-white active:scale-95 transition-all outline-none"
+                            &gt;
+                                &lt;FilePlus className="w-6 h-6 drop-shadow-md" /&gt;
+                            &lt;/button&gt;
+                        &lt;/div&gt;
+
+                        &lt;button onClick={() =&gt; setIsNewsOpen(true)} className="flex flex-col items-center justify-center w-16 h-full gap-1 text-zinc-500 hover:text-red-400 transition-colors"&gt;
+                            &lt;Radio className="w-6 h-6 animate-pulse text-red-500" /&gt;
+                            &lt;span className="text-[10px] font-bold tracking-wider"&gt;News&lt;/span&gt;
+                        &lt;/button&gt;
+
+                        &lt;div className="flex flex-col items-center justify-center w-16 h-full gap-1"&gt;
+                            &lt;SignedIn&gt;
+                                &lt;UserButton appearance={{ elements: { userButtonAvatarBox: "w-7 h-7 border-2 border-[#09090b] shadow-md" } }} /&gt;
+                            &lt;/SignedIn&gt;
+                            &lt;SignedOut&gt;
+                                &lt;SignInButton mode="modal"&gt;
+                                    &lt;button className="text-zinc-500 flex flex-col items-center gap-1 hover:text-zinc-300"&gt;
+                                        &lt;UserCheck className="w-6 h-6" /&gt;
+                                        &lt;span className="text-[10px] font-bold tracking-wider"&gt;Sign In&lt;/span&gt;
+                                    &lt;/button&gt;
+                                &lt;/SignInButton&gt;
+                            &lt;/SignedOut&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+
+            &lt;/div&gt;
+
+            &lt;NewsPanel isOpen={isNewsOpen} onClose={() =&gt; setIsNewsOpen(false)} /&gt;
+        &lt;/&gt;
+    );
+}
+</code></pre>\n<h2>Frontend News Panel (NewsPanel.jsx) (src/NewsPanel.jsx)</h2>\n<pre><code class="language-javascript">import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, ExternalLink, Share2, Sparkles, Loader2, RefreshCw, Radio, Image as ImageIcon, Trophy, Activity, Globe2, Target, Zap } from 'lucide-react';
+import { twMerge } from 'tailwind-merge';
+import { clsx } from 'clsx';
+
+function cn(...inputs) {
+    return twMerge(clsx(inputs));
+}
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+export default function NewsPanel({ isOpen, onClose }) {
+    const [activeTab, setActiveTab] = useState('global'); // 'global', 'sports', 'scores', 'markets'
+    const [news, setNews] = useState([]);
+    const [sportsNews, setSportsNews] = useState([]);
+    const [scores, setScores] = useState([]);
+    const [markets, setMarkets] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    // AI Summarizer &amp; Predictor States
+    const [activeArticle, setActiveArticle] = useState(null);
+    const [summaryResult, setSummaryResult] = useState('');
+    const [summaryLoading, setSummaryLoading] = useState(false);
+    const [activeMatch, setActiveMatch] = useState(null);
+    const [activeMarket, setActiveMarket] = useState(null);
+    const [predictionResult, setPredictionResult] = useState('');
+    const [predictionLoading, setPredictionLoading] = useState(false);
+
+    const fetchData = async (force = false) =&gt; {
+        setLoading(true);
+        setError('');
+        try {
+            if (activeTab === 'global' &amp;&amp; (news.length === 0 || force)) {
+                const resp = await axios.get(`${API_BASE_URL}/api/news`);
+                setNews(resp.data.articles || []);
+            } else if (activeTab === 'sports' &amp;&amp; (sportsNews.length === 0 || force)) {
+                const resp = await axios.get(`${API_BASE_URL}/api/news/sports`);
+                setSportsNews(resp.data.articles || []);
+            } else if (activeTab === 'scores' &amp;&amp; (scores.length === 0 || force)) {
+                const resp = await axios.get(`${API_BASE_URL}/api/scores/live`);
+                setScores(resp.data.matches || []);
+            } else if (activeTab === 'markets' &amp;&amp; (markets.length === 0 || force)) {
+                const resp = await axios.get(`${API_BASE_URL}/api/markets/trending`);
+                setMarkets(resp.data.markets || []);
+            }
+        } catch (err) {
+            console.error(err);
+            setError('Failed to gather the latest streams. Backend API might be updating or unreachable.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() =&gt; {
+        if (isOpen) {
+            fetchData();
+        }
+    }, [isOpen, activeTab]);
+
+    const handleSummarize = async (article) =&gt; {
+        setActiveArticle(article);
+        setSummaryLoading(true);
+        setSummaryResult('');
+        try {
+            const resp = await axios.post(`${API_BASE_URL}/api/news/summarize`, {
+                content: article.link,
+                context: article.title
+            });
+            setSummaryResult(resp.data.result);
+        } catch (err) {
+            setSummaryResult("Failed to decrypt and summarize this article. The source might be blocking our AI.");
+        } finally {
+            setSummaryLoading(false);
+        }
+    };
+
+    const handlePredictMatch = async (match) =&gt; {
+        setActiveMatch(match);
+        setPredictionLoading(true);
+        setPredictionResult('');
+        try {
+            const resp = await axios.post(`${API_BASE_URL}/api/scores/predict`, {
+                content: `Match: ${match.team1} vs ${match.team2}. Tournament: ${match.tournament}. Score: ${match.team1} (${match.score1}) - ${match.team2} (${match.score2}). Live Context: ${match.context}. Target Status: ${match.status}.`
+            });
+            setPredictionResult(resp.data.result);
+        } catch (err) {
+            setPredictionResult("Failed to calculate AI prediction. Probability engine is currently offline.");
+        } finally {
+            setPredictionLoading(false);
+        }
+    };
+
+    const handleAnalyzeMarket = async (market) =&gt; {
+        setActiveMarket(market);
+        setPredictionLoading(true);
+        setPredictionResult('');
+        try {
+            const resp = await axios.post(`${API_BASE_URL}/api/markets/analyze`, {
+                content: market.symbol
+            });
+            setPredictionResult(resp.data.result);
+        } catch (err) {
+            setPredictionResult("Failed to gather AI Financial Analysis. Try again later.");
+        } finally {
+            setPredictionLoading(false);
+        }
+    };
+
+    const handleShare = (platform, textToShare, urlToShare) =&gt; {
+        if (!textToShare) return;
+        const encodedText = encodeURIComponent(textToShare + "\n\nShared via https://gistly.site");
+        const encodedUrl = encodeURIComponent(urlToShare || "https://gistly.site");
+
+        let shareUrl = "";
+        switch (platform) {
+            case 'twitter':
+                shareUrl = `https://twitter.com/intent/tweet?text=${encodedText}`;
+                break;
+            case 'facebook':
+                shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&amp;quote=${encodedText}`;
+                break;
+            case 'whatsapp':
+                shareUrl = `https://api.whatsapp.com/send?text=${encodedText}`;
+                break;
+            default:
+                break;
+        }
+        if (shareUrl) window.open(shareUrl, '_blank');
+    };
+
+    const renderNewsList = (dataList) =&gt; {
+        if (loading &amp;&amp; dataList.length === 0) {
+            return (
+                &lt;div className="flex flex-col items-center justify-center h-full text-zinc-500 gap-4 mt-20"&gt;
+                    &lt;Loader2 className="w-8 h-8 animate-spin text-red-400" /&gt;
+                    &lt;span className="text-xs uppercase tracking-[0.2em] font-mono"&gt;Intercepting Signals...&lt;/span&gt;
+                &lt;/div&gt;
+            );
+        }
+
+        if (error) {
+            return (
+                &lt;div className="text-center text-red-400 text-xs p-5 bg-red-500/10 rounded-xl border border-red-500/20 mt-10"&gt;
+                    {error}
+                &lt;/div&gt;
+            );
+        }
+
+        return (
+            &lt;div className="space-y-4 pb-24"&gt;
+                {dataList.map((item, idx) =&gt; (
+                    &lt;div key={idx} className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 hover:border-red-500/30 transition-all group"&gt;
+                        &lt;div className="text-[10px] text-red-400 font-bold tracking-widest uppercase mb-2 flex items-center gap-2"&gt;
+                            &lt;span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"&gt;&lt;/span&gt;
+                            {item.source}
+                        &lt;/div&gt;
+                        &lt;h3 className="text-sm font-semibold text-white leading-relaxed mb-3 group-hover:text-red-300 transition-colors"&gt;
+                            {item.title}
+                        &lt;/h3&gt;
+                        &lt;div className="flex items-center justify-between mt-4 text-xs"&gt;
+                            &lt;a href={item.link} target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-white flex items-center gap-1 transition-colors"&gt;
+                                &lt;ExternalLink className="w-3.5 h-3.5" /&gt; Source
+                            &lt;/a&gt;
+                            &lt;button
+                                onClick={() =&gt; handleSummarize(item)}
+                                className="bg-indigo-500/10 hover:bg-indigo-500 hover:text-white text-indigo-400 border border-indigo-500/20 px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all shadow-[0_0_10px_rgba(99,102,241,0.1)] hover:shadow-[0_0_20px_rgba(99,102,241,0.4)] flex items-center gap-1.5"
+                            &gt;
+                                &lt;Sparkles className="w-3.5 h-3.5" /&gt; Gistify
+                            &lt;/button&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                ))}
+            &lt;/div&gt;
+        );
+    };
+
+    const renderScoresList = () =&gt; {
+        if (loading &amp;&amp; scores.length === 0) {
+            return (
+                &lt;div className="flex flex-col items-center justify-center h-full text-zinc-500 gap-4 mt-20"&gt;
+                    &lt;Loader2 className="w-8 h-8 animate-spin text-emerald-400" /&gt;
+                    &lt;span className="text-xs uppercase tracking-[0.2em] font-mono"&gt;Syncing Scoreboards...&lt;/span&gt;
+                &lt;/div&gt;
+            );
+        }
+
+        return (
+            &lt;div className="space-y-4 pb-24"&gt;
+                {scores.map((match, idx) =&gt; (
+                    &lt;div key={idx} className="bg-gradient-to-b from-zinc-900 to-black border border-white/10 rounded-2xl p-5 hover:border-emerald-500/50 transition-all group relative overflow-hidden"&gt;
+                        {/* Glow effect internally */}
+                        &lt;div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"&gt;&lt;/div&gt;
+
+                        &lt;div className="flex justify-between items-center mb-3"&gt;
+                            &lt;div className="flex items-center gap-2"&gt;
+                                &lt;Trophy className="w-4 h-4 text-emerald-400" /&gt;
+                                &lt;span className="text-[10px] font-bold text-zinc-400 tracking-wider uppercase"&gt;{match.tournament}&lt;/span&gt;
+                            &lt;/div&gt;
+                            {match.live &amp;&amp; (
+                                &lt;div className="px-2 py-0.5 bg-red-500/20 border border-red-500/50 rounded flex items-center gap-1.5"&gt;
+                                    &lt;span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"&gt;&lt;/span&gt;
+                                    &lt;span className="text-[9px] font-bold text-red-500 uppercase tracking-widest"&gt;Live&lt;/span&gt;
+                                &lt;/div&gt;
+                            )}
+                        &lt;/div&gt;
+
+                        {/* Teams &amp; Scores */}
+                        &lt;div className="space-y-3 mt-4"&gt;
+                            &lt;div className="flex justify-between items-center"&gt;
+                                &lt;span className="text-sm font-bold text-white tracking-wide"&gt;{match.team1}&lt;/span&gt;
+                                &lt;span className="text-sm font-mono text-emerald-300 font-bold bg-emerald-500/10 px-2 rounded"&gt;{match.score1}&lt;/span&gt;
+                            &lt;/div&gt;
+                            &lt;div className="flex justify-between items-center"&gt;
+                                &lt;span className="text-sm font-bold text-zinc-300 tracking-wide"&gt;{match.team2}&lt;/span&gt;
+                                &lt;span className="text-sm font-mono text-emerald-300/70 font-bold"&gt;{match.score2}&lt;/span&gt;
+                            &lt;/div&gt;
+                        &lt;/div&gt;
+
+                        &lt;div className="mt-4 pt-4 border-t border-white/5 flex flex-col gap-3"&gt;
+                            &lt;div className="text-xs text-zinc-400 font-medium leading-relaxed border-l-2 border-emerald-500/30 pl-2"&gt;
+                                {match.status}
+                            &lt;/div&gt;
+
+                            &lt;button
+                                onClick={() =&gt; handlePredictMatch(match)}
+                                className="w-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(16,185,129,0.1)] hover:shadow-[0_0_25px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2"
+                            &gt;
+                                &lt;Zap className="w-4 h-4" /&gt; AI Win Probability Predictor
+                            &lt;/button&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                ))}
+            &lt;/div&gt;
+        );
+    };
+
+    const renderMarketsList = () =&gt; {
+        if (loading &amp;&amp; markets.length === 0) {
+            return (
+                &lt;div className="flex flex-col items-center justify-center h-full text-zinc-500 gap-4 mt-20"&gt;
+                    &lt;Loader2 className="w-8 h-8 animate-spin text-purple-400" /&gt;
+                    &lt;span className="text-xs uppercase tracking-[0.2em] font-mono"&gt;Loading Tickers...&lt;/span&gt;
+                &lt;/div&gt;
+            );
+        }
+
+        return (
+            &lt;div className="space-y-4 pb-24"&gt;
+                &lt;div className="mb-4 text-xs font-mono text-zinc-500 bg-black/40 p-3 rounded-xl border border-white/5"&gt;
+                    🚀 &lt;span className="text-white font-bold"&gt;LIVE INTELLIGENCE:&lt;/span&gt; Top performing Global Stocks and Crypto Assets.
+                &lt;/div&gt;
+                {markets.map((market, idx) =&gt; (
+                    &lt;div key={idx} className="bg-gradient-to-br from-zinc-900 via-black to-[#0c0c14] border border-white/10 rounded-2xl p-4 hover:border-purple-500/30 transition-all group overflow-hidden relative"&gt;
+                        &lt;div className="absolute -right-10 -top-10 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-all"&gt;&lt;/div&gt;
+
+                        &lt;div className="flex justify-between items-start mb-4"&gt;
+                            &lt;div&gt;
+                                &lt;h3 className="text-sm font-black text-white flex items-center gap-2"&gt;
+                                    {market.symbol}
+                                    {market.isCrypto &amp;&amp; &lt;span className="bg-orange-500/20 text-orange-400 text-[9px] px-1.5 py-0.5 rounded border border-orange-500/20"&gt;CRYPTO&lt;/span&gt;}
+                                &lt;/h3&gt;
+                                &lt;p className="text-[10px] text-zinc-500 uppercase tracking-widest"&gt;{market.name}&lt;/p&gt;
+                            &lt;/div&gt;
+                            &lt;div className="text-right"&gt;
+                                &lt;p className="text-sm font-bold text-zinc-200"&gt;${market.price}&lt;/p&gt;
+                                &lt;p className={cn("text-xs font-bold font-mono tracking-wider", market.change &gt;= 0 ? "text-emerald-400" : "text-red-400")}&gt;
+                                    {market.change &gt;= 0 ? "+" : ""}{market.change}%
+                                &lt;/p&gt;
+                            &lt;/div&gt;
+                        &lt;/div&gt;
+
+                        &lt;div className="pt-3 border-t border-white/5"&gt;
+                            &lt;button
+                                onClick={() =&gt; handleAnalyzeMarket(market)}
+                                className="w-full bg-purple-500/10 hover:bg-purple-500 hover:text-white text-purple-400 border border-purple-500/20 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all shadow-[0_0_10px_rgba(168,85,247,0.1)] hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] flex items-center justify-center gap-1.5"
+                            &gt;
+                                &lt;Sparkles className="w-3.5 h-3.5" /&gt; AI Market Intel
+                            &lt;/button&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                ))}
+            &lt;/div&gt;
+        );
+    };
+
+    return (
+        &lt;AnimatePresence&gt;
+            {isOpen &amp;&amp; (
+                &lt;motion.div
+                    initial={{ x: '100%', opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    exit={{ x: '100%', opacity: 0 }}
+                    transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                    className="fixed right-0 top-0 bottom-0 w-full md:w-[480px] bg-[#09090b]/95 backdrop-blur-3xl border-l border-white/10 z-[150] shadow-[-30px_0_60px_rgba(0,0,0,0.6)] flex flex-col"
+                &gt;
+                    &lt;div className="p-5 border-b border-white/10 bg-black/40"&gt;
+                        &lt;div className="flex items-center justify-between mb-5"&gt;
+                            &lt;div className="flex items-center gap-3"&gt;
+                                &lt;div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.2)]"&gt;
+                                    &lt;Activity className="w-5 h-5 text-red-400 animate-pulse" /&gt;
+                                &lt;/div&gt;
+                                &lt;div&gt;
+                                    &lt;h2 className="text-base font-black text-white tracking-widest uppercase bg-clip-text text-transparent bg-gradient-to-r from-red-400 to-indigo-400"&gt;Stream Hub&lt;/h2&gt;
+                                    &lt;p className="text-[10px] text-zinc-500 font-mono tracking-widest"&gt;LIVE DATA CENTER&lt;/p&gt;
+                                &lt;/div&gt;
+                            &lt;/div&gt;
+                            &lt;div className="flex items-center gap-2"&gt;
+                                &lt;button onClick={() =&gt; fetchData(true)} className="p-2 text-zinc-400 hover:text-white transition-colors"&gt;
+                                    &lt;RefreshCw className={cn("w-4 h-4", loading &amp;&amp; "animate-spin")} /&gt;
+                                &lt;/button&gt;
+                                &lt;button onClick={onClose} className="p-2 text-zinc-400 hover:text-white transition-colors bg-white/5 rounded-full hover:bg-white/10"&gt;
+                                    &lt;X className="w-5 h-5" /&gt;
+                                &lt;/button&gt;
+                            &lt;/div&gt;
+                        &lt;/div&gt;
+
+                        {/* Custom Tabs */}
+                        &lt;div className="flex bg-black/50 p-1 rounded-xl border border-white/5 relative z-10"&gt;
+                            &lt;button
+                                onClick={() =&gt; setActiveTab('global')}
+                                className={cn("flex-1 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-lg flex flex-col items-center justify-center gap-1 transition-all", activeTab === 'global' ? "bg-white/10 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300")}
+                            &gt;
+                                &lt;Globe2 className="w-3.5 h-3.5" /&gt; News
+                            &lt;/button&gt;
+                            &lt;button
+                                onClick={() =&gt; setActiveTab('sports')}
+                                className={cn("flex-1 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-lg flex flex-col items-center justify-center gap-1 transition-all", activeTab === 'sports' ? "bg-red-500/20 text-red-400 border border-red-500/20 shadow-sm" : "text-zinc-500 hover:text-zinc-300")}
+                            &gt;
+                                &lt;Target className="w-3.5 h-3.5" /&gt; Sports
+                            &lt;/button&gt;
+                            &lt;button
+                                onClick={() =&gt; setActiveTab('scores')}
+                                className={cn("flex-1 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-lg flex flex-col items-center justify-center gap-1 transition-all", activeTab === 'scores' ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 shadow-sm" : "text-zinc-500 hover:text-zinc-300")}
+                            &gt;
+                                &lt;Trophy className="w-3.5 h-3.5" /&gt; Scores
+                            &lt;/button&gt;
+                            &lt;button
+                                onClick={() =&gt; setActiveTab('markets')}
+                                className={cn("flex-1 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-lg flex flex-col items-center justify-center gap-1 transition-all", activeTab === 'markets' ? "bg-purple-500/20 text-purple-400 border border-purple-500/20 shadow-sm" : "text-zinc-500 hover:text-zinc-300")}
+                            &gt;
+                                &lt;Activity className="w-3.5 h-3.5" /&gt; Markets
+                            &lt;/button&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+
+                    &lt;div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent p-4 relative bg-gradient-to-b from-transparent to-black/50"&gt;
+                        {activeTab === 'global' &amp;&amp; renderNewsList(news)}
+                        {activeTab === 'sports' &amp;&amp; renderNewsList(sportsNews)}
+                        {activeTab === 'scores' &amp;&amp; renderScoresList()}
+                        {activeTab === 'markets' &amp;&amp; renderMarketsList()}
+                    &lt;/div&gt;
+                &lt;/motion.div&gt;
+            )}
+
+            {/* AI Summary Modal (News) */}
+            &lt;AnimatePresence&gt;
+                {activeArticle &amp;&amp; (
+                    &lt;motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+                    &gt;
+                        &lt;motion.div
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.9, y: 20 }}
+                            className="w-full max-w-lg bg-[#0c0c0e] border border-indigo-500/20 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(99,102,241,0.1)] relative flex flex-col max-h-[90vh]"
+                        &gt;
+                            &lt;div className="p-4 bg-indigo-500/10 border-b border-indigo-500/20 flex items-center justify-between shrink-0"&gt;
+                                &lt;h3 className="text-xs font-bold text-indigo-400 uppercase tracking-widest flex items-center gap-2"&gt;
+                                    &lt;Sparkles className="w-4 h-4" /&gt; AI News Generator
+                                &lt;/h3&gt;
+                                &lt;button onClick={() =&gt; setActiveArticle(null)} className="text-zinc-400 hover:text-white"&gt;
+                                    &lt;X className="w-5 h-5" /&gt;
+                                &lt;/button&gt;
+                            &lt;/div&gt;
+                            &lt;div className="p-6 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10"&gt;
+                                &lt;p className="text-xs text-zinc-500 mb-4 border-l-2 border-indigo-500/30 pl-3"&gt;
+                                    {activeArticle.title}
+                                &lt;/p&gt;
+                                &lt;div className="bg-black/40 border border-white/5 rounded-xl p-4 min-h-[150px] relative"&gt;
+                                    {summaryLoading ? (
+                                        &lt;div className="absolute inset-0 flex flex-col items-center justify-center text-indigo-400"&gt;
+                                            &lt;Loader2 className="w-6 h-6 animate-spin mb-2" /&gt;
+                                            &lt;span className="text-[10px] uppercase font-mono tracking-widest"&gt;Generating Post...&lt;/span&gt;
+                                        &lt;/div&gt;
+                                    ) : (
+                                        &lt;div className="text-sm text-zinc-200 whitespace-pre-wrap leading-relaxed font-sans"&gt;
+                                            {summaryResult || "Click generate to create social post..."}
+                                        &lt;/div&gt;
+                                    )}
+                                &lt;/div&gt;
+                                {!summaryLoading &amp;&amp; summaryResult &amp;&amp; (
+                                    &lt;div className="mt-6"&gt;
+                                        &lt;h4 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3"&gt;Broadcast to Network&lt;/h4&gt;
+                                        &lt;div className="grid grid-cols-3 gap-3"&gt;
+                                            &lt;button onClick={() =&gt; handleShare('twitter', summaryResult, activeArticle?.link)} className="bg-[#1DA1F2]/10 hover:bg-[#1DA1F2]/20 text-[#1DA1F2] border border-[#1DA1F2]/20 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-colors"&gt;
+                                                Twitter
+                                            &lt;/button&gt;
+                                            &lt;button onClick={() =&gt; handleShare('facebook', summaryResult, activeArticle?.link)} className="bg-[#1877F2]/10 hover:bg-[#1877F2]/20 text-[#1877F2] border border-[#1877F2]/20 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-colors"&gt;
+                                                Facebook
+                                            &lt;/button&gt;
+                                            &lt;button onClick={() =&gt; handleShare('whatsapp', summaryResult, activeArticle?.link)} className="bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] border border-[#25D366]/20 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-colors"&gt;
+                                                WhatsApp
+                                            &lt;/button&gt;
+                                        &lt;/div&gt;
+                                    &lt;/div&gt;
+                                )}
+                            &lt;/div&gt;
+                        &lt;/motion.div&gt;
+                    &lt;/motion.div&gt;
+                )}
+            &lt;/AnimatePresence&gt;
+
+            {/* AI Prediction Modal (Scores) */}
+            &lt;AnimatePresence&gt;
+                {activeMatch &amp;&amp; (
+                    &lt;motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+                    &gt;
+                        &lt;motion.div
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.9, y: 20 }}
+                            className="w-full max-w-lg bg-[#0c0c0e] border border-emerald-500/20 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(16,185,129,0.1)] relative flex flex-col max-h-[90vh]"
+                        &gt;
+                            &lt;div className="p-4 bg-emerald-500/10 border-b border-emerald-500/20 flex items-center justify-between shrink-0"&gt;
+                                &lt;h3 className="text-xs font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-2"&gt;
+                                    &lt;Zap className="w-4 h-4" /&gt; AI Match Predictor (Beta)
+                                &lt;/h3&gt;
+                                &lt;button onClick={() =&gt; setActiveMatch(null)} className="text-zinc-400 hover:text-white"&gt;
+                                    &lt;X className="w-5 h-5" /&gt;
+                                &lt;/button&gt;
+                            &lt;/div&gt;
+                            &lt;div className="p-6 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10"&gt;
+                                &lt;div className="flex justify-between items-center mb-6"&gt;
+                                    &lt;div className="text-center w-[40%]"&gt;
+                                        &lt;p className="text-lg font-black text-white"&gt;{activeMatch.team1}&lt;/p&gt;
+                                        &lt;p className="text-xs font-mono text-emerald-400 mt-1"&gt;{activeMatch.score1}&lt;/p&gt;
+                                    &lt;/div&gt;
+                                    &lt;div className="text-xs font-bold text-zinc-600 uppercase"&gt;VS&lt;/div&gt;
+                                    &lt;div className="text-center w-[40%]"&gt;
+                                        &lt;p className="text-lg font-black text-white"&gt;{activeMatch.team2}&lt;/p&gt;
+                                        &lt;p className="text-xs font-mono text-emerald-400 mt-1"&gt;{activeMatch.score2}&lt;/p&gt;
+                                    &lt;/div&gt;
+                                &lt;/div&gt;
+
+                                &lt;div className="bg-black/40 border border-white/5 rounded-xl p-5 min-h-[150px] relative"&gt;
+                                    {predictionLoading ? (
+                                        &lt;div className="absolute inset-0 flex flex-col items-center justify-center text-emerald-400"&gt;
+                                            &lt;Loader2 className="w-6 h-6 animate-spin mb-3" /&gt;
+                                            &lt;span className="text-[10px] uppercase font-mono tracking-widest"&gt;Running Probability Engine...&lt;/span&gt;
+                                            &lt;span className="text-[9px] text-zinc-500 mt-2"&gt;Analyzing player stats, pitch context &amp; momentum&lt;/span&gt;
+                                        &lt;/div&gt;
+                                    ) : (
+                                        &lt;div className="text-sm text-zinc-200 whitespace-pre-wrap leading-relaxed font-sans"&gt;
+                                            {predictionResult || "Prediction failed to load."}
+                                        &lt;/div&gt;
+                                    )}
+                                &lt;/div&gt;
+
+                                {!predictionLoading &amp;&amp; predictionResult &amp;&amp; (
+                                    &lt;div className="mt-6"&gt;
+                                        &lt;button onClick={() =&gt; handleShare('whatsapp', `[Live AI Prediction] ${activeMatch.team1} vs ${activeMatch.team2}\n\n${predictionResult}`, null)} className="w-full bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] border border-[#25D366]/20 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-colors"&gt;
+                                            Share Prediction via WhatsApp
+                                        &lt;/button&gt;
+                                    &lt;/div&gt;
+                                )}
+                            &lt;/div&gt;
+                        &lt;/motion.div&gt;
+                    &lt;/motion.div&gt;
+                )}
+            &lt;/AnimatePresence&gt;
+
+            {/* AI Market Analysis Modal */}
+            &lt;AnimatePresence&gt;
+                {activeMarket &amp;&amp; (
+                    &lt;motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+                    &gt;
+                        &lt;motion.div
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.9, y: 20 }}
+                            className="w-full max-w-lg bg-[#0c0c0e] border border-purple-500/20 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(168,85,247,0.1)] relative flex flex-col max-h-[90vh]"
+                        &gt;
+                            &lt;div className="p-4 bg-purple-500/10 border-b border-purple-500/20 flex items-center justify-between shrink-0"&gt;
+                                &lt;h3 className="text-xs font-bold text-purple-400 uppercase tracking-widest flex items-center gap-2"&gt;
+                                    &lt;Activity className="w-4 h-4" /&gt; AI Investment Analyst
+                                &lt;/h3&gt;
+                                &lt;button onClick={() =&gt; setActiveMarket(null)} className="text-zinc-400 hover:text-white"&gt;
+                                    &lt;X className="w-5 h-5" /&gt;
+                                &lt;/button&gt;
+                            &lt;/div&gt;
+                            &lt;div className="p-6 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10"&gt;
+                                &lt;div className="flex justify-between items-center mb-6 border-b border-white/5 pb-4"&gt;
+                                    &lt;div&gt;
+                                        &lt;p className="text-xl font-black text-white"&gt;{activeMarket.symbol}&lt;/p&gt;
+                                        &lt;p className="text-xs font-mono text-zinc-500 mt-1"&gt;{activeMarket.name}&lt;/p&gt;
+                                    &lt;/div&gt;
+                                    &lt;div className="text-right"&gt;
+                                        &lt;p className="text-lg font-black text-white"&gt;${activeMarket.price}&lt;/p&gt;
+                                        &lt;p className={cn("text-xs font-bold font-mono tracking-wider", activeMarket.change &gt;= 0 ? "text-emerald-400" : "text-red-400")}&gt;
+                                            {activeMarket.change &gt;= 0 ? "+" : ""}{activeMarket.change}%
+                                        &lt;/p&gt;
+                                    &lt;/div&gt;
+                                &lt;/div&gt;
+
+                                &lt;div className="bg-black/40 border border-white/5 rounded-xl p-5 min-h-[150px] relative"&gt;
+                                    {predictionLoading ? (
+                                        &lt;div className="absolute inset-0 flex flex-col items-center justify-center text-purple-400"&gt;
+                                            &lt;Loader2 className="w-6 h-6 animate-spin mb-3" /&gt;
+                                            &lt;span className="text-[10px] uppercase font-mono tracking-widest"&gt;Compiling Market Data...&lt;/span&gt;
+                                            &lt;span className="text-[9px] text-zinc-500 mt-2"&gt;Checking sentiment, chart trends &amp; volume&lt;/span&gt;
+                                        &lt;/div&gt;
+                                    ) : (
+                                        &lt;div className="text-sm text-zinc-200 whitespace-pre-wrap leading-relaxed font-sans"&gt;
+                                            {predictionResult || "Analysis failed to load."}
+                                        &lt;/div&gt;
+                                    )}
+                                &lt;/div&gt;
+
+                                {!predictionLoading &amp;&amp; predictionResult &amp;&amp; (
+                                    &lt;div className="mt-6 flex gap-3"&gt;
+                                        &lt;button onClick={() =&gt; handleShare('whatsapp', `[Gistly.site AI Market Intel] ${activeMarket.symbol}\n\n${predictionResult}`, null)} className="flex-1 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] border border-[#25D366]/20 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-colors"&gt;
+                                            WhatsApp
+                                        &lt;/button&gt;
+                                        &lt;button onClick={() =&gt; handleShare('twitter', `[Gistly AI Analysis] ${activeMarket.symbol} outlook 📈\n\n${predictionResult.substring(0, 200)}...`, null)} className="flex-1 bg-[#1DA1F2]/10 hover:bg-[#1DA1F2]/20 text-[#1DA1F2] border border-[#1DA1F2]/20 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-colors"&gt;
+                                            X (Twitter)
+                                        &lt;/button&gt;
+                                    &lt;/div&gt;
+                                )}
+                            &lt;/div&gt;
+                        &lt;/motion.div&gt;
+                    &lt;/motion.div&gt;
+                )}
+            &lt;/AnimatePresence&gt;
+        &lt;/AnimatePresence&gt;
+    );
+}
+</code></pre>\n<h2>Frontend Styling (index.css) (src/index.css)</h2>\n<pre><code class="language-css">@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 0 0% 0%;
+  --foreground: 210 40% 98%;
+}
+
+body {
+  @apply font-sans antialiased bg-black text-white;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(51, 94, 255, 0.15) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(138, 43, 226, 0.15) 0px, transparent 50%),
+    radial-gradient(at 50% 100%, rgba(0, 255, 127, 0.1) 0px, transparent 50%);
+  background-attachment: fixed;
+}
+
+.glass-card {
+  @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden;
+}
+
+.glass-button {
+  @apply bg-white/10 hover:bg-white/20 backdrop-blur-lg border border-white/10 rounded-2xl transition-all duration-300 active:scale-95;
+}
+
+.gradient-text {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-500 to-emerald-400 animate-gradient-x;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-white/10 rounded-full hover:bg-white/20 transition-all;
+}
+</code></pre>\n<h2>Tailwind Configuration (tailwind.config.js)</h2>\n<pre><code class="language-javascript">/** @type {import('tailwindcss').Config} */
+export default {
+    content: [
+        "./index.html",
+        "./src/**/*.{js,ts,jsx,tsx}",
+    ],
+    theme: {
+        extend: {
+            fontFamily: {
+                sans: ['Plus Jakarta Sans', 'sans-serif'],
+                display: ['Outfit', 'sans-serif'],
+            },
+            colors: {
+                primary: {
+                    50: '#f0f4ff',
+                    100: '#e0e9ff',
+                    200: '#c1d4ff',
+                    300: '#92b3ff',
+                    400: '#5c87ff',
+                    500: '#335eff',
+                    600: '#1e3eff',
+                    700: '#142ccf',
+                    800: '#1326a7',
+                    900: '#162883',
+                    950: '#11184f',
+                },
+            },
+            animation: {
+                'gradient-x': 'gradient-x 15s ease infinite',
+                'gradient-y': 'gradient-y 15s ease infinite',
+                'gradient-xy': 'gradient-xy 15s ease infinite',
+            },
+            keyframes: {
+                'gradient-y': {
+                    '0%, 100%': { 'background-size': '400% 400%', 'background-position': 'center top' },
+                    '50%': { 'background-size': '200% 200%', 'background-position': 'center bottom' },
+                },
+                'gradient-x': {
+                    '0%, 100%': { 'background-size': '200% 200%', 'background-position': 'left center' },
+                    '50%': { 'background-size': '200% 200%', 'background-position': 'right center' },
+                },
+                'gradient-xy': {
+                    '0%, 100%': { 'background-size': '400% 400%', 'background-position': 'left center' },
+                    '50%': { 'background-size': '200% 200%', 'background-position': 'right center' },
+                }
+            }
+        },
+    },
+    plugins: [],
+}
+</code></pre>\n
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-jsx.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
+</body>
+</html>

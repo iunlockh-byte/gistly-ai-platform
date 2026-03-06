@@ -343,8 +343,21 @@ async def generate_image_api(req: AIRequest):
 
     session = requests.Session()
 
-    # Provider Hierarchy: Hugging Face (New Router) -> Airforce/Mirror (Failover)
-    providers: list[dict[str, Any]] = []
+    # Provider Hierarchy: Fast Direct APIs -> Hugging Face -> Leonardo
+    providers: list[dict[str, Any]] = [
+        {
+            "name": "Pollinations High-Stability",
+            "url": f"https://image.pollinations.ai/prompt/{prompt_encoded}?width=1024&height=1024&nologo=true&model=flux",
+            "type": "direct",
+            "verify": True,
+        },
+        {
+            "name": "Airforce SDXL (Global)",
+            "url": f"https://api.airforce/v1/image-generation?model=stable-diffusion-xl&prompt={prompt_encoded}",
+            "type": "direct",
+            "verify": True,
+        },
+    ]
 
     # Add Hugging Face nodes if token is available
     if HF_TOKEN:
@@ -372,18 +385,6 @@ async def generate_image_api(req: AIRequest):
                 "name": "Leonardo.ai (Premium Cluster)",
                 "type": "leonardo",
                 "key": LEONARDO_API_KEY,
-            },
-            {
-                "name": "Airforce SDXL (Global)",
-                "url": f"https://api.airforce/v1/image-generation?model=stable-diffusion-xl&prompt={prompt_encoded}",
-                "type": "direct",
-                "verify": True,
-            },
-            {
-                "name": "Pollinations High-Stability",
-                "url": f"https://image.pollinations.ai/prompt/{prompt_encoded}?width=1024&height=1024&nologo=true&model=flux",
-                "type": "direct",
-                "verify": True,
             },
         ]
     )

@@ -17,6 +17,7 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { Sphere, MeshDistortMaterial } from '@react-three/drei';
 import Marquee from 'react-fast-marquee';
 import NewsPanel from './NewsPanel';
+import { Link } from 'react-router-dom';
 
 function cn(...inputs) {
     return twMerge(clsx(inputs));
@@ -1494,37 +1495,38 @@ export default function App() {
                                 </button>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 relative z-10 overflow-y-auto scrollbar-thin scrollbar-thumb-cyan-500/20 w-full flex-1">
-                                    <div className="p-8 md:p-10 border-b md:border-b-0 md:border-r border-white/5 bg-white/[0.02] flex flex-col justify-between">
+                                    <div className="p-8 md:p-10 border-b md:border-b-0 md:border-r border-white/5 bg-white/[0.02] flex flex-col justify-center">
                                         <div>
-                                            <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mb-6">
-                                                <Fingerprint className="w-6 h-6 text-cyan-400" />
+                                            <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-3xl overflow-hidden bg-cyan-500/10 border border-cyan-500/30 mb-6 shadow-[0_0_30px_rgba(34,211,238,0.2)]">
+                                                <img src="/ceo.png" alt="K.A.S. Hashen Fernando" className="w-full h-full object-cover object-top grayscale hover:grayscale-0 transition-all duration-500" />
                                             </div>
-                                            <h3 className="text-4xl font-black text-white tracking-tighter font-display leading-tight mb-4">
-                                                The World's 1st <br />
-                                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-indigo-400 to-purple-400">Multitasking AI Hub.</span>
+                                            <h3 className="text-3xl font-black text-white tracking-tighter font-display leading-tight mb-2">
+                                                K.A.S. Hashen Fernando
                                             </h3>
+                                            <p className="text-cyan-400 font-bold uppercase tracking-widest text-xs mb-6">
+                                                CEO, Owner & Solo Founder
+                                            </p>
                                             <p className="text-zinc-400 text-sm leading-relaxed mb-6 border-l-2 border-cyan-500/30 pl-4 py-1 italic">
-                                                "Not just another chatbot. We engineered the ultimate unified workspace for modern intelligence automation."
+                                                "I engineered Gistly.ai entirely from the ground up as a solo developer. It's not just another AI tool; it's the ultimate unified multitasking workspace I envisioned for the modern world."
                                             </p>
                                         </div>
 
-                                        <div className="mt-8">
-                                            <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-3 flex items-center gap-2">
-                                                <Zap className="w-3 h-3 text-cyan-500" /> Powered by Tier-1 Engines
-                                            </div>
-                                            <div className="bg-black/40 rounded-xl border border-white/5 overflow-hidden py-3">
-                                                <Marquee gradient={true} gradientColor="[0,0,0]" gradientWidth={40} speed={40}>
-                                                    <div className="flex items-center gap-8 px-4 text-xs font-bold text-zinc-300 tracking-widest uppercase">
-                                                        <span className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-blue-400" /> Google Gemini</span>
-                                                        <span className="flex items-center gap-2"><Terminal className="w-4 h-4 text-purple-600" /> Antigravity Core</span>
-                                                        <span className="flex items-center gap-2"><ImageIcon className="w-4 h-4 text-pink-400" /> Leonardo.Ai</span>
-                                                        <span className="flex items-center gap-2"><Globe className="w-4 h-4 text-emerald-400" /> Apify</span>
-                                                        <span className="flex items-center gap-2"><Cpu className="w-4 h-4 text-orange-400" /> Groq Llama 3</span>
-                                                        <span className="flex items-center gap-2"><Database className="w-4 h-4 text-emerald-500" /> Supabase</span>
-                                                        <span className="flex items-center gap-2"><Code className="w-4 h-4 text-cyan-400" /> React Ecosystem</span>
-                                                    </div>
-                                                </Marquee>
-                                            </div>
+                                        <div className="mt-4 space-y-3">
+                                            <h4 className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold flex items-center gap-2 mb-2">
+                                                <Mail className="w-3 h-3 text-cyan-500" /> Direct Neural Uplink
+                                            </h4>
+                                            <a href="mailto:ceo@gistly.site" className="flex items-center gap-3 text-sm text-zinc-300 hover:text-cyan-400 transition-colors bg-black/40 p-3 rounded-xl border border-white/5 hover:border-cyan-500/30">
+                                                <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                                                    <UserCheck className="w-4 h-4 text-cyan-500" />
+                                                </div>
+                                                ceo@gistly.site
+                                            </a>
+                                            <a href="mailto:support@gistly.site" className="flex items-center gap-3 text-sm text-zinc-300 hover:text-cyan-400 transition-colors bg-black/40 p-3 rounded-xl border border-white/5 hover:border-cyan-500/30">
+                                                <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                                                    <Shield className="w-4 h-4 text-cyan-500" />
+                                                </div>
+                                                support@gistly.site
+                                            </a>
                                         </div>
                                     </div>
 
@@ -1546,7 +1548,7 @@ export default function App() {
                                                         </div>
                                                         <h5 className="text-xs font-bold text-white uppercase tracking-wider">Antigravity Intelligence</h5>
                                                     </div>
-                                                    <p className="text-[10px] text-zinc-400 mt-2">The core agentic AI software engineer. Built the entire platform infrastructure, algorithms, and 100% of the codebase autonomously.</p>
+                                                    <p className="text-[10px] text-zinc-400 mt-2">The core agentic AI software engineer. Assisted the solo founder in generating the platform infrastructure and algorithms autonomously.</p>
                                                 </div>
                                                 <div className="bg-white/[0.02] border border-white/5 p-4 rounded-2xl hover:border-cyan-500/30 transition-all">
                                                     <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center mb-3">
@@ -1700,6 +1702,15 @@ export default function App() {
                             </SignedOut>
                         </div>
                     </div>
+                </div>
+
+                {/* Desktop Footer Links */}
+                <div className="hidden md:flex fixed bottom-2 right-6 z-50 items-center gap-4 text-[10px] text-zinc-500 font-mono tracking-widest uppercase bg-black/40 backdrop-blur-md px-4 py-2 rounded-xl border border-white/5">
+                    <Link to="/terms" className="hover:text-indigo-400 transition-colors">Terms</Link>
+                    <span className="w-1 h-1 rounded-full bg-zinc-700"></span>
+                    <Link to="/privacy" className="hover:text-emerald-400 transition-colors">Privacy</Link>
+                    <span className="w-1 h-1 rounded-full bg-zinc-700"></span>
+                    <Link to="/refund" className="hover:text-rose-400 transition-colors">Refund</Link>
                 </div>
 
             </div>
