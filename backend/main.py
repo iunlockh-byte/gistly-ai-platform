@@ -23,6 +23,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from lemonsqueezy import LemonSqueezy
+from typing import List, Any
 
 load_dotenv()
 
@@ -103,6 +104,31 @@ app.add_middleware(
 class AIRequest(BaseModel):
     content: str
     context: str = ""
+
+
+class AdminLogin(BaseModel):
+    password: str
+
+
+class CustomerRequest(BaseModel):
+    name: str
+    email: str
+    request_type: str
+    details: str
+
+
+class VisitorTrack(BaseModel):
+    ip: str = "unknown"
+    country: str = "unknown"
+    city: str = "unknown"
+    path: str = "/"
+
+class APIKeyCreate(BaseModel):
+    user_email: str
+    plan: str = "free"  # free, pro, enterprise
+
+class APIKeyStatus(BaseModel):
+    api_key: str
 
 
 @app.get("/")
@@ -946,6 +972,17 @@ async def send_contact_email(data: ContactMessage):
     msg.attach(MIMEText(body, 'plain'))
     
     try:
+        # Also log to Supabase if available
+        if supabase:
+            try:
+                supabase.table("contacts").insert({
+                    "name": data.name,
+                    "email": data.email,
+                    "message": data.message
+                }).execute()
+            except Exception as db_err:
+                print(f"Supabase Contact Log Error: {db_err}")
+
         server = smtplib.SMTP('smtp.zoho.com', 587)
         server.starttls()
         server.login(smtp_user, smtp_pass)
@@ -954,6 +991,155 @@ async def send_contact_email(data: ContactMessage):
         return {"result": "Message successfully transmitted to Gistly Nexus."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Transmission failed: {str(e)}")
+
+
+@app.post("/api/customer-request")
+async def save_customer_request(req: CustomerRequest):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database connection offline.")
+    
+    try:
+        supabase.table("customer_requests").insert({
+            "name": req.name,
+            "email": req.email,
+            "type": req.request_type,
+            "details": req.details
+        }).execute()
+        return {"status": "success", "message": "Your request has been filed in Gistly Neural Registry."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/track-visit")
+async def track_visit(data: VisitorTrack):
+    if not supabase:
+        return {"status": "skipped"}
+    try:
+        supabase.table("analytics").insert({
+            "ip": data.ip,
+            "country": data.country,
+            "city": data.city,
+            "path": data.path
+        }).execute()
+        return {"status": "tracked"}
+    except Exception as e:
+        print(f"Tracking error: {e}")
+        return {"status": "error"}
+
+
+@app.post("/api/admin/login")
+async def admin_login(data: AdminLogin):
+    admin_pass = os.getenv("ADMIN_PASSWORD", "Chamila84")
+    if data.password == admin_pass:
+        return {"status": "success", "token": "gistly_admin_secret_auth_token"}
+    raise HTTPException(status_code=401, detail="Unauthorized Access Denied.")
+
+
+@app.get("/api/admin/stats")
+async def get_admin_stats():
+    if not supabase:
+        raise HTTPException(status_code=500, detail="No DB")
+    
+    try:
+        # Get counts
+        req_count = supabase.table("customer_requests").select("*", count="exact").execute().count
+        contact_count = supabase.table("contacts").select("*", count="exact").execute().count
+        workflow_count = supabase.table("workflows").select("*", count="exact").execute().count
+        visitor_count = supabase.table("analytics").select("*", count="exact").execute().count
+        
+        # New API Stats
+        api_keys_count = supabase.table("api_keys").select("*", count="exact").execute().count
+        
+        # Get country distribution
+        visitors = supabase.table("analytics").select("country").execute().data
+        countries = {}
+        for v in visitors:
+            c = v.get('country', 'Unknown')
+            countries[c] = countries.get(c, 0) + 1
+            
+        # Recent requests
+        recent_reqs = supabase.table("customer_requests").select("*").order("created_at", desc=True).limit(5).execute().data
+        
+        return {
+            "total_requests": req_count,
+            "total_contacts": contact_count,
+            "total_workflows": workflow_count,
+            "total_visitors": visitor_count,
+            "total_api_keys": api_keys_count,
+            "countries": countries,
+            "recent_requests": recent_reqs
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- API MARKETPLACE & MONETIZATION ENDPOINTS ---
+
+import uuid
+
+@app.post("/api/keys/generate")
+async def generate_api_key(data: APIKeyCreate):
+    """Generate a new API key for a developer/user."""
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database connection missing")
+    
+    new_key = f"gst_{uuid.uuid4().hex}"
+    try:
+        insert_data = {
+            "user_email": data.user_email,
+            "api_key": new_key,
+            "plan": data.plan,
+            "balance": 100.0 if data.plan == "free" else 5000.0, # Initial credits
+            "is_active": True
+        }
+        supabase.table("api_keys").insert(insert_data).execute()
+        return {"status": "success", "api_key": new_key, "balance": insert_data["balance"]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/keys/me/{email}")
+async def get_my_keys(email: str):
+    """Retrieve all API keys associated with an email."""
+    if not supabase:
+        return []
+    res = supabase.table("api_keys").select("*").eq("user_email", email).execute()
+    return res.data
+
+async def validate_api_key(api_key: str):
+    """Validate an API key and deduct balance for marketplace monetization."""
+    if not supabase:
+        return True # Default to true for testing if DB is down
+    
+    res = supabase.table("api_keys").select("*").eq("api_key", api_key).eq("is_active", True).execute()
+    if not res.data:
+        return False
+    
+    key_info = res.data[0]
+    if key_info["balance"] <= 0:
+        return "insufficient_balance"
+    
+    # Deduct 1 credit per neural operation
+    new_balance = key_info["balance"] - 1.0
+    supabase.table("api_keys").update({"balance": new_balance}).eq("api_key", api_key).execute()
+    
+    # Track usage (Insert into api_usage table if it exists)
+    try:
+        supabase.table("api_usage").insert({
+            "api_key_id": key_info["id"],
+            "endpoint": "neural_operation"
+        }).execute()
+    except:
+        pass # Optional tracking
+    
+    return True
+
+@app.get("/api/marketplace/plans")
+async def get_api_plans():
+    """Returns available API plans for monetization."""
+    return [
+        {"id": "starter", "name": "Neural Starter", "price": 0, "credits": 100, "features": ["100 Credits", "Standard Support"]},
+        {"id": "pro", "name": "Neural Architect", "price": 29, "credits": 5000, "features": ["5000 Credits", "Priority Routing", "Custom Training"]},
+        {"id": "enterprise", "name": "Global Nexus", "price": 199, "credits": 50000, "features": ["50,000 Credits", "Dedicated Infrastructure", "Unlimited SDK Access"]}
+    ]
 
 class CheckoutRequest(BaseModel):
     variant_id: str

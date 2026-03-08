@@ -17,6 +17,10 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { Sphere, MeshDistortMaterial } from '@react-three/drei';
 import Marquee from 'react-fast-marquee';
 import NewsPanel from './NewsPanel';
+import LaunchCountdown from './components/LaunchCountdown';
+import AdminDashboard from './components/AdminDashboard';
+import CustomerRequestModal from './components/CustomerRequestModal';
+import APIForgeModal from './components/APIForgeModal';
 import { Link } from 'react-router-dom';
 
 function cn(...inputs) {
@@ -976,6 +980,32 @@ export default function App() {
     const [isSendingContact, setIsSendingContact] = useState(false);
     const [contactStatus, setContactStatus] = useState(null);
 
+    // Admin & Request States
+    const [isRequestOpen, setIsRequestOpen] = useState(false);
+    const [isAdminOpen, setIsAdminOpen] = useState(false);
+    const [isApiForgeOpen, setIsApiForgeOpen] = useState(false);
+
+    // Visitor Tracking
+    useEffect(() => {
+        const trackVisit = async () => {
+            try {
+                const path = window.location.pathname;
+                const geoResp = await axios.get('https://ipapi.co/json/').catch(() => ({ data: {} }));
+                const geo = geoResp.data;
+                
+                await axios.post(`${API_BASE_URL}/api/track-visit`, {
+                    ip: geo.ip || 'unknown',
+                    country: geo.country_name || 'unknown',
+                    city: geo.city || 'unknown',
+                    path: path
+                });
+            } catch (err) {
+                console.warn("Tracking silent failure.");
+            }
+        };
+        trackVisit();
+    }, []);
+
     const handleContactSubmit = async (e) => {
         e.preventDefault();
         setIsSendingContact(true);
@@ -1121,6 +1151,8 @@ export default function App() {
                     <div className="absolute inset-0 bg-radial-gradient from-transparent via-[#050505]/40 to-[#050505] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at center, transparent 0%, #050505 70%)' }}></div>
                 </div>
 
+                <LaunchCountdown />
+
                 {/* SVG Wires Layer */}
                 <svg className="fixed inset-0 w-full h-full pointer-events-none z-10" style={{ filter: 'drop-shadow(0 0 8px rgba(99,102,241,0.5))' }}>
                     <AnimatePresence>
@@ -1153,7 +1185,7 @@ export default function App() {
                         </linearGradient>
                     </defs>
                 </svg>
-                <style jsx>{`
+                <style>{`
                 @keyframes dash { to { stroke-dashoffset: -1000; } }
             `}</style>
 
@@ -1319,6 +1351,31 @@ export default function App() {
                                 </div>
                             </div>
                         ))}
+
+                        {/* Request Button Inside Scroll to save space */}
+                        <div className="flex flex-col gap-2 mt-6 mb-4">
+                            <button
+                                onClick={() => setIsApiForgeOpen(true)}
+                                className="p-4 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 rounded-2xl transition-all flex flex-col items-center gap-2 group shrink-0"
+                            >
+                                <Cpu className="w-5 h-5 group-hover:scale-110 transition-transform text-indigo-300" />
+                                <div className="text-center">
+                                    <p className="text-[10px] font-black uppercase tracking-widest">API Forge Marketplace</p>
+                                    <p className="text-[8px] text-zinc-600 font-bold uppercase mt-1 tracking-tighter">Monetize Neural Intelligence</p>
+                                </div>
+                            </button>
+
+                            <button
+                                onClick={() => setIsRequestOpen(true)}
+                                className="p-4 bg-white/5 hover:bg-white/10 text-zinc-400 border border-white/10 border-dashed rounded-2xl transition-all flex flex-col items-center gap-2 group shrink-0"
+                            >
+                                <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform text-zinc-500" />
+                                <div className="text-center">
+                                    <p className="text-[10px] font-black uppercase tracking-widest">Request Custom Node</p>
+                                    <p className="text-[8px] text-zinc-700 font-bold uppercase mt-1 tracking-tighter">Private Architecture</p>
+                                </div>
+                            </button>
+                        </div>
                     </div>
 
                     <div className="mt-4 pt-4 border-t border-white/5 text-[9px] text-center text-zinc-600 font-mono">
@@ -1334,7 +1391,7 @@ export default function App() {
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
-                                className="absolute top-1/2 left-[calc(50%+144px)] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center text-center pointer-events-none"
+                                className="absolute top-1/2 left-1/2 md:left-[calc(50%+144px)] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center text-center pointer-events-none px-4"
                             >
                                 <div className="w-24 h-24 rounded-full border border-indigo-500/30 flex items-center justify-center p-3 animate-[pulse_4s_ease-in-out_infinite] mb-6 relative">
                                     <div className="absolute inset-0 border border-cyan-400/20 rounded-full animate-ping pointer-events-none" style={{ animationDuration: '3s' }}></div>
@@ -1789,6 +1846,8 @@ export default function App() {
 
                 {/* Desktop Footer Links */}
                 <div className="hidden md:flex fixed bottom-2 right-6 z-50 items-center gap-4 text-[10px] text-zinc-500 font-mono tracking-widest uppercase bg-black/40 backdrop-blur-md px-4 py-2 rounded-xl border border-white/5">
+                    <button onClick={() => setIsAdminOpen(true)} className="hover:text-amber-400 transition-colors opacity-50 hover:opacity-100 uppercase">Nexus</button>
+                    <span className="w-1 h-1 rounded-full bg-zinc-700"></span>
                     <Link to="/terms" className="hover:text-indigo-400 transition-colors">Terms</Link>
                     <span className="w-1 h-1 rounded-full bg-zinc-700"></span>
                     <Link to="/privacy" className="hover:text-emerald-400 transition-colors">Privacy</Link>
@@ -1799,6 +1858,13 @@ export default function App() {
             </div>
 
             <NewsPanel isOpen={isNewsOpen} onClose={() => setIsNewsOpen(false)} />
+            <CustomerRequestModal isOpen={isRequestOpen} onClose={() => setIsRequestOpen(false)} />
+            <AdminDashboard isOpen={isAdminOpen} onClose={() => setIsAdminOpen(false)} />
+            <APIForgeModal 
+                isOpen={isApiForgeOpen} 
+                onClose={() => setIsApiForgeOpen(false)} 
+                userEmail={user?.primaryEmailAddress?.emailAddress || ""} 
+            />
         </>
     );
 }

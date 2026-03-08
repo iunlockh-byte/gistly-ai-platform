@@ -287,9 +287,11 @@ export default function NewsPanel({ isOpen, onClose }) {
     };
 
     return (
-        <AnimatePresence>
+        <>
+            <AnimatePresence>
             {isOpen && (
                 <motion.div
+                    key="main-news-panel"
                     initial={{ x: '100%', opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
                     exit={{ x: '100%', opacity: 0 }}
@@ -354,11 +356,13 @@ export default function NewsPanel({ isOpen, onClose }) {
                     </div>
                 </motion.div>
             )}
+        </AnimatePresence>
 
-            {/* AI Summary Modal (News) */}
-            <AnimatePresence>
+        {/* AI Summary Modal (News) */}
+        <AnimatePresence>
                 {activeArticle && (
                     <motion.div
+                        key="article-summary-modal"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
@@ -420,6 +424,7 @@ export default function NewsPanel({ isOpen, onClose }) {
             <AnimatePresence>
                 {activeMatch && (
                     <motion.div
+                        key="match-prediction-modal"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
@@ -483,6 +488,7 @@ export default function NewsPanel({ isOpen, onClose }) {
             <AnimatePresence>
                 {activeMarket && (
                     <motion.div
+                        key="market-analysis-modal"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
@@ -545,6 +551,6 @@ export default function NewsPanel({ isOpen, onClose }) {
                     </motion.div>
                 )}
             </AnimatePresence>
-        </AnimatePresence>
+        </>
     );
 }
