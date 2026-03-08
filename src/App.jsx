@@ -613,20 +613,32 @@ const PricingModal = ({ isOpen, onClose }) => {
         }
     ];
 
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(null);
 
-    const handleCheckout = async (priceId) => {
-        setIsLoading(true);
+    const handleCheckout = async (priceId, provider, planName, planPrice) => {
+        setIsLoading(planName);
         try {
-            const response = await axios.post(`${API_BASE_URL}/api/create-checkout-session`, {
-                price_id: priceId
-            });
-            window.location.href = response.data.url;
+            if (provider === 'lemonsqueezy') {
+                const response = await axios.post(`${API_BASE_URL}/api/create-checkout-session`, {
+                    variant_id: priceId
+                });
+                if (response.data.url) {
+                    window.location.href = response.data.url;
+                }
+            } else if (provider === 'paypal') {
+                const response = await axios.post(`${API_BASE_URL}/api/paypal/create-order`, {
+                    plan_name: planName,
+                    price: planPrice
+                });
+                if (response.data.url) {
+                    window.location.href = response.data.url;
+                }
+            }
         } catch (error) {
-            console.error("Stripe Checkout Error:", error);
-            alert("Failed to initialize payment gateway. Please make sure Stripe keys are setup in the backend.");
+            console.error("Checkout Error:", error);
+            alert("Failed to initialize payment gateway. Please make sure payment credentials are setup in the backend.");
         } finally {
-            setIsLoading(false);
+            setIsLoading(null);
         }
     };
 
@@ -694,27 +706,58 @@ const PricingModal = ({ isOpen, onClose }) => {
                                             </div>
                                         ))}
                                     </div>
-                                    <button
-                                        disabled={isLoading}
-                                        onClick={() => {
-                                            if (plan.price === "$0") {
-                                                onClose();
-                                            } else if (plan.price === "$99") {
-                                                alert("Enterprise contact initiated. Check Neural Uplink.");
-                                            } else {
-                                                handleCheckout(plan.price_id);
-                                            }
-                                        }}
-                                        className={cn(
-                                            "w-full py-4 mt-auto rounded-2xl font-bold text-sm transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2",
-                                            plan.popular
-                                                ? "bg-indigo-500 text-white hover:bg-indigo-400 shadow-indigo-500/25"
-                                                : "bg-white/5 text-zinc-300 hover:bg-white/10"
+                                    <div className="mt-auto">
+                                        {plan.price !== "$0" && plan.price !== "$99" ? (
+                                            <div className="flex flex-col gap-3 w-full">
+                                                <button
+                                                    disabled={isLoading === plan.name}
+                                                    onClick={() => handleCheckout(plan.price_id, 'lemonsqueezy', plan.name, plan.price)}
+                                                    className={cn(
+                                                        "w-full py-3 rounded-2xl font-bold text-sm transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2",
+                                                        plan.popular
+                                                            ? "bg-indigo-500 text-white hover:bg-indigo-400 shadow-indigo-500/25"
+                                                            : "bg-white/5 text-zinc-300 hover:bg-white/10"
+                                                    )}
+                                                >
+                                                    {isLoading === plan.name ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                                                    {isLoading === plan.name ? "Connecting..." : "Pay via Card (Lemon Squeezy)"}
+                                                </button>
+                                                <button
+                                                    disabled={isLoading === plan.name}
+                                                    onClick={() => handleCheckout(plan.price_id, 'paypal', plan.name, plan.price)}
+                                                    className={cn(
+                                                        "w-full py-3 rounded-2xl font-bold text-sm transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 border",
+                                                        plan.popular
+                                                            ? "bg-[#0070ba] hover:bg-[#005ea6] text-white border-[#0070ba]"
+                                                            : "bg-transparent border-[#0070ba] text-[#0070ba] hover:bg-[#0070ba]/10"
+                                                    )}
+                                                >
+                                                    {isLoading === plan.name ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                                                    {isLoading === plan.name ? "Connecting..." : "Pay via PayPal"}
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                disabled={isLoading === plan.name}
+                                                onClick={() => {
+                                                    if (plan.price === "$0") {
+                                                        onClose();
+                                                    } else if (plan.price === "$99") {
+                                                        alert("Enterprise contact initiated. Check Neural Uplink.");
+                                                    }
+                                                }}
+                                                className={cn(
+                                                    "w-full py-4 rounded-2xl font-bold text-sm transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2",
+                                                    plan.popular
+                                                        ? "bg-indigo-500 text-white hover:bg-indigo-400 shadow-indigo-500/25"
+                                                        : "bg-white/5 text-zinc-300 hover:bg-white/10"
+                                                )}
+                                            >
+                                                {isLoading === plan.name ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                                                {isLoading === plan.name ? "Connecting..." : plan.button}
+                                            </button>
                                         )}
-                                    >
-                                        {isLoading && plan.price === "$19" ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                                        {isLoading && plan.price === "$19" ? "Connecting..." : plan.button}
-                                    </button>
+                                    </div>
                                 </motion.div>
                             ))}
                         </div>

@@ -73,6 +73,11 @@ else:
     ls = None
     print("WARNING: LEMON_SQUEEZY_API_KEY not found. Payments disabled.")
     
+# Configure PayPal
+PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID")
+PAYPAL_CLIENT_SECRET = os.getenv("PAYPAL_CLIENT_SECRET")
+PAYPAL_MODE = os.getenv("PAYPAL_MODE", "sandbox") # sandbox or live
+
 # Gistly URL for Redirects
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 model = genai.GenerativeModel("gemini-flash-latest")
@@ -1009,6 +1014,72 @@ async def create_checkout_session(request: CheckoutRequest):
         
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+class PayPalOrderRequest(BaseModel):
+    plan_name: str
+    price: str
+
+@app.post("/api/paypal/create-order")
+async def create_paypal_order(request: PayPalOrderRequest):
+    if not PAYPAL_CLIENT_ID or not PAYPAL_CLIENT_SECRET:
+        raise HTTPException(status_code=500, detail="PayPal credentials are not configured on this server.")
+        
+    try:
+        base_url = "https://api-m.sandbox.paypal.com" if PAYPAL_MODE == "sandbox" else "https://api-m.paypal.com"
+        
+        # Get Access Token
+        auth = base64.b64encode(f"{PAYPAL_CLIENT_ID}:{PAYPAL_CLIENT_SECRET}".encode("utf-8")).decode("utf-8")
+        token_headers = {
+            "Authorization": f"Basic {auth}",
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+        token_data = {"grant_type": "client_credentials"}
+        token_response = requests.post(f"{base_url}/v1/oauth2/token", headers=token_headers, data=token_data)
+        token_response.raise_for_status()
+        access_token = token_response.json()["access_token"]
+        
+        # Create Order
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+        }
+        
+        price_val = request.price.replace("$", "").strip()
+        
+        payload = {
+            "intent": "CAPTURE",
+            "purchase_units": [
+                {
+                    "reference_id": f"plan_{request.plan_name.replace(' ', '_').lower()}",
+                    "description": f"Gistly.site - Premium Plan: {request.plan_name}",
+                    "amount": {
+                        "currency_code": "USD",
+                        "value": price_val
+                    }
+                }
+            ],
+            "application_context": {
+                "return_url": f"{FRONTEND_URL}?payment=success",
+                "cancel_url": f"{FRONTEND_URL}?payment=cancelled",
+                "user_action": "PAY_NOW"
+            }
+        }
+        
+        response = requests.post(f"{base_url}/v2/checkout/orders", json=payload, headers=headers)
+        response.raise_for_status()
+        order_data = response.json()
+        
+        approve_link = next((link["href"] for link in order_data["links"] if link["rel"] == "approve"), None)
+        
+        if not approve_link:
+            raise Exception("No approve link found in PayPal response")
+            
+        return {"url": approve_link, "order_id": order_data["id"]}
+        
+    except Exception as e:
+        print(f"PayPal Order Error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
 
 if __name__ == "__main__":
     import uvicorn
