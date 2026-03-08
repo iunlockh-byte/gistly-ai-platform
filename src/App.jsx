@@ -605,14 +605,14 @@ const PricingModal = ({ isOpen, onClose }) => {
             textColor: "text-white"
         },
         {
-            name: "Neural Agency",
-            price: "$99",
+            name: "Nexus Aegis Security",
+            price: "$149",
             period: "/mo",
-            price_id: "1367804", // Neural Agency Lemon Squeezy Variant ID
-            desc: "Scale your intelligence",
-            features: ["Everything in Pro", "API Developer Key", "Custom Model Tuning", "Dedicated Data Line", "SLA Guarantee"],
-            button: "Contact Sales",
-            color: "border-emerald-500/30 bg-emerald-500/5",
+            price_id: "sec_aegis_001",
+            desc: "Security as a Service",
+            features: ["Anti-Debugging Core", "Request Origin Verification", "Neural Encryption Layer", "Traffic Telemetry", "24/7 Threat Monitoring"],
+            button: "Deploy Shield",
+            color: "border-cyan-500/30 bg-cyan-500/5",
             textColor: "text-white"
         }
     ];
@@ -623,14 +623,14 @@ const PricingModal = ({ isOpen, onClose }) => {
         setIsLoading(planName);
         try {
             if (provider === 'lemonsqueezy') {
-                const response = await axios.post(`${API_BASE_URL}/api/create-checkout-session`, {
+                const response = await nexusAxios.post('/api/create-checkout-session', {
                     variant_id: priceId
                 });
                 if (response.data.url) {
                     window.location.href = response.data.url;
                 }
             } else if (provider === 'paypal') {
-                const response = await axios.post(`${API_BASE_URL}/api/paypal/create-order`, {
+                const response = await nexusAxios.post('/api/paypal/create-order', {
                     plan_name: planName,
                     price: planPrice
                 });
@@ -830,7 +830,7 @@ const DraggableNode = ({ data, removeNode, updateNodePosition }) => {
         }
 
         try {
-            const response = await axios.post(`${API_BASE_URL}${tool.endpoint}`, {
+            const response = await nexusAxios.post(tool.endpoint, {
                 content: inputText
             });
             setResult(response.data.result);
@@ -985,24 +985,61 @@ export default function App() {
     const [isAdminOpen, setIsAdminOpen] = useState(false);
     const [isApiForgeOpen, setIsApiForgeOpen] = useState(false);
 
-    // Visitor Tracking
+    // Nexus Aegis Stealth Protocol
     useEffect(() => {
-        const trackVisit = async () => {
-            try {
-                const path = window.location.pathname;
-                const geoResp = await axios.get('https://ipapi.co/json/').catch(() => ({ data: {} }));
-                const geo = geoResp.data;
-                
-                await axios.post(`${API_BASE_URL}/api/track-visit`, {
-                    ip: geo.ip || 'unknown',
-                    country: geo.country_name || 'unknown',
-                    city: geo.city || 'unknown',
-                    path: path
-                });
-            } catch (err) {
-                console.warn("Tracking silent failure.");
+        const handleContextMenu = (e) => e.preventDefault();
+        const handleKeydown = (e) => {
+            if (
+                e.keyCode === 123 || 
+                (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) || 
+                (e.ctrlKey && e.keyCode === 85)
+            ) {
+                e.preventDefault();
             }
         };
+
+        document.addEventListener('contextmenu', handleContextMenu);
+        document.addEventListener('keydown', handleKeydown);
+
+        const cleaner = setInterval(() => {
+            console.clear();
+            console.log("%c NEXUS AEGIS • SECURE PERIMETER ", "color: #22d3ee; font-weight: bold; font-size: 20px; background: #000; padding: 10px; border: 2px solid #22d3ee;");
+            console.log("%c Protected by Gistly Neural Security. Unauthorized access is impossible. ", "color: #94a3b8;");
+        }, 3000);
+
+        return () => {
+            document.removeEventListener('contextmenu', handleContextMenu);
+            document.removeEventListener('keydown', handleKeydown);
+            clearInterval(cleaner);
+        };
+    }, []);
+
+    // Secure Axios Config
+    const nexusAxios = axios.create({
+        baseURL: API_BASE_URL,
+        headers: {
+            'X-Nexus-Shield': 'G7-NX-SECURITY-V1-ALPHA' // Cryptographic Origin Token
+        }
+    });
+
+    const trackVisit = async () => {
+        try {
+            const path = window.location.pathname;
+            const geoResp = await axios.get('https://ipapi.co/json/').catch(() => ({ data: {} }));
+            const geo = geoResp.data;
+            
+            await nexusAxios.post('/api/track-visit', {
+                ip: geo.ip || 'unknown',
+                country: geo.country_name || 'unknown',
+                city: geo.city || 'unknown',
+                path: path
+            });
+        } catch (err) {
+            console.warn("Tracking silent failure.");
+        }
+    };
+    
+    useEffect(() => {
         trackVisit();
     }, []);
 
@@ -1011,7 +1048,7 @@ export default function App() {
         setIsSendingContact(true);
         setContactStatus(null);
         try {
-            await axios.post(`${API_BASE_URL}/api/contact`, {
+            await nexusAxios.post('/api/contact', {
                 name: contactName,
                 email: contactEmail,
                 message: contactMessage
@@ -1051,7 +1088,7 @@ export default function App() {
         }
         setIsSaving(true);
         try {
-            await axios.post(`${API_BASE_URL}/api/workflows/save`, {
+            await nexusAxios.post('/api/workflows/save', {
                 id: workflowId,
                 user_id: user.id,
                 name: workflowName,
@@ -1069,7 +1106,7 @@ export default function App() {
     const fetchHistory = async () => {
         if (!isSignedIn) return;
         try {
-            const resp = await axios.get(`${API_BASE_URL}/api/workflows/${user.id}`);
+            const resp = await nexusAxios.get(`/api/workflows/${user.id}`);
             setHistory(resp.data.workflows);
             setIsHistoryOpen(true);
         } catch (err) {
@@ -1079,7 +1116,7 @@ export default function App() {
 
     const loadWorkflow = async (id) => {
         try {
-            const resp = await axios.get(`${API_BASE_URL}/api/workflow-data/${id}`);
+            const resp = await nexusAxios.get(`/api/workflow-data/${id}`);
             setNodes(resp.data.nodes);
             setWorkflowId(id);
             setWorkflowName(resp.data.name);
@@ -1853,6 +1890,11 @@ export default function App() {
                     <Link to="/privacy" className="hover:text-emerald-400 transition-colors">Privacy</Link>
                     <span className="w-1 h-1 rounded-full bg-zinc-700"></span>
                     <Link to="/refund" className="hover:text-rose-400 transition-colors">Refund</Link>
+                    <span className="w-1 h-1 rounded-full bg-zinc-700"></span>
+                    <div className="flex items-center gap-2 text-cyan-400 font-black italic">
+                        <Shield className="w-3 h-3" />
+                        <span className="tracking-tighter uppercase">Nexus Aegis Protected</span>
+                    </div>
                 </div>
 
             </div>

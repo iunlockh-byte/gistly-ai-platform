@@ -18,6 +18,14 @@ const APIForgeModal = ({ isOpen, onClose, userEmail }) => {
     const [generatedKey, setGeneratedKey] = useState(null);
     const [copied, setCopied] = useState(false);
     const [plans, setPlans] = useState([]);
+    
+    // Secure Axios Config
+    const nexusAxios = axios.create({
+        baseURL: API_BASE_URL,
+        headers: {
+            'X-Nexus-Shield': 'G7-NX-SECURITY-V1-ALPHA'
+        }
+    });
 
     useEffect(() => {
         if (isOpen) {
@@ -28,7 +36,7 @@ const APIForgeModal = ({ isOpen, onClose, userEmail }) => {
 
     const fetchPlans = async () => {
         try {
-            const resp = await axios.get(`${API_BASE_URL}/api/marketplace/plans`);
+            const resp = await nexusAxios.get('/api/marketplace/plans');
             setPlans(resp.data);
         } catch (err) {
             console.error(err);
@@ -37,7 +45,7 @@ const APIForgeModal = ({ isOpen, onClose, userEmail }) => {
 
     const fetchMyKeys = async () => {
         try {
-            const resp = await axios.get(`${API_BASE_URL}/api/keys/me/${userEmail}`);
+            const resp = await nexusAxios.get(`/api/keys/me/${userEmail}`);
             setKeys(resp.data);
         } catch (err) {
             console.error(err);
@@ -51,7 +59,7 @@ const APIForgeModal = ({ isOpen, onClose, userEmail }) => {
         }
         setLoading(true);
         try {
-            const resp = await axios.post(`${API_BASE_URL}/api/keys/generate`, {
+            const resp = await nexusAxios.post('/api/keys/generate', {
                 user_email: userEmail,
                 plan: planId
             });

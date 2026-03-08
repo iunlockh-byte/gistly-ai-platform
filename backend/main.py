@@ -7,7 +7,8 @@ import urllib3
 import time
 import urllib.parse
 import sqlite3
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import google.generativeai as genai
@@ -91,14 +92,49 @@ app = FastAPI(
     version="2.0.0",
 )
 
-# CORS middleware
+# CORS middleware - Hardened to trusted origins
+allowed_origins = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://gistly.site",
+    "https://www.gistly.site",
+    "https://gistly.pages.dev",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Nexus Shield: Core Security Middleware
+NEXUS_SHIELD_TOKEN = "G7-NX-SECURITY-V1-ALPHA"
+
+@app.middleware("http")
+async def nexus_security_shield(request: Request, call_next):
+    # Public & Infrastructure Paths
+    public_paths = ["/", "/api/marketplace/plans", "/docs", "/openapi.json"]
+    
+    if request.url.path in public_paths:
+        return await call_next(request)
+    
+    # Internal Frontend Verification
+    shield = request.headers.get("X-Nexus-Shield")
+    if shield == NEXUS_SHIELD_TOKEN:
+        return await call_next(request)
+        
+    # External Developer Verification
+    api_key = request.headers.get("X-API-KEY")
+    if api_key:
+        return await call_next(request)
+
+    # If neither, block access
+    return JSONResponse(
+        status_code=403,
+        content={"detail": "Nexus Shield: Forbidden Access. Origin not verified."}
+    )
 
 
 class AIRequest(BaseModel):

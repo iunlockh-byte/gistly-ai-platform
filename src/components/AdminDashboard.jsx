@@ -17,13 +17,21 @@ const AdminDashboard = ({ isOpen, onClose }) => {
     const [stats, setStats] = useState(null);
     const [error, setError] = useState('');
     const [activeSection, setActiveSection] = useState('overview');
+    
+    // Secure Axios Config
+    const nexusAxios = axios.create({
+        baseURL: API_BASE_URL,
+        headers: {
+            'X-Nexus-Shield': 'G7-NX-SECURITY-V1-ALPHA'
+        }
+    });
 
     const handleLogin = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError('');
         try {
-            const resp = await axios.post(`${API_BASE_URL}/api/admin/login`, { password });
+            const resp = await nexusAxios.post('/api/admin/login', { password });
             if (resp.data.status === 'success') {
                 setIsAuthenticated(true);
                 fetchStats();
@@ -38,7 +46,7 @@ const AdminDashboard = ({ isOpen, onClose }) => {
     const fetchStats = async () => {
         setLoading(true);
         try {
-            const resp = await axios.get(`${API_BASE_URL}/api/admin/stats`);
+            const resp = await nexusAxios.get('/api/admin/stats');
             setStats(resp.data);
         } catch (err) {
             console.error(err);
