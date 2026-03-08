@@ -470,7 +470,7 @@ const GistlyVoiceAssistant = () => {
     };
 
     return (
-        <div className="fixed bottom-8 right-8 z-[100] flex flex-col items-end">
+        <div className="fixed bottom-28 md:bottom-8 right-6 md:right-8 z-[100] flex flex-col items-end">
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
@@ -962,6 +962,7 @@ export default function App() {
 
     // Mobile exclusive states
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
     const filteredTools = tools.filter(tool => {
         const matchesCategory = selectedCategory === 'All' || tool.category === selectedCategory;
@@ -1120,7 +1121,18 @@ export default function App() {
                             <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center group-hover:bg-indigo-500/20 transition-all shadow-[0_0_15px_rgba(99,102,241,0.2)]">
                                 <Sparkles className="text-indigo-400 w-4 h-4" />
                             </div>
-                            <span className="text-xl font-bold tracking-tight text-white font-display">Gistly<span className="text-indigo-400">.ai</span> <span className="text-[10px] text-zinc-500 uppercase tracking-widest ml-2 bg-white/5 py-1 px-2 rounded-full border border-white/5">Canvas Mode</span></span>
+                            <span className="text-xl font-bold tracking-tight text-white font-display">Gistly<span className="text-indigo-400">.ai</span> <span className="hidden md:inline-block text-[10px] text-zinc-500 uppercase tracking-widest ml-2 bg-white/5 py-1 px-2 rounded-full border border-white/5">Canvas Mode</span></span>
+                        </div>
+
+                        {/* Mobile Menu Toggle Button */}
+                        <div className="md:hidden flex items-center gap-4">
+                            <div className="flex items-center gap-2 text-indigo-400/90 bg-indigo-400/10 px-2 py-1 rounded-full border border-indigo-400/20 cursor-default select-none">
+                                <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></div>
+                                <span className="text-[10px] font-bold uppercase tracking-wider">Online</span>
+                            </div>
+                            <button onClick={() => setIsMobileNavOpen(!isMobileNavOpen)} className="text-zinc-400 hover:text-white transition-colors">
+                                {isMobileNavOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                            </button>
                         </div>
 
                         <div className="hidden md:flex items-center gap-6 text-sm font-medium">
@@ -1148,6 +1160,34 @@ export default function App() {
                         </div>
                     </div>
                 </nav>
+
+                {/* Mobile Dropdown Nav Menu */}
+                <AnimatePresence>
+                    {isMobileNavOpen && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            className="md:hidden fixed top-16 left-0 right-0 z-40 bg-[#09090b]/95 backdrop-blur-2xl border-b border-white/10 px-6 py-6 flex flex-col gap-4 shadow-2xl"
+                        >
+                            <div className="flex flex-col gap-2 border-b border-white/5 pb-4">
+                                <button onClick={() => { setIsGuideOpen(true); setIsMobileNavOpen(false); }} className="text-left text-zinc-300 font-semibold py-2 hover:text-white">User Guide</button>
+                                <button onClick={() => { setIsPricingOpen(true); setIsMobileNavOpen(false); }} className="text-left text-indigo-400 font-semibold py-2 hover:text-indigo-300 flex items-center gap-2">
+                                    <Star className="w-4 h-4 fill-indigo-400/20" /> Pricing Options
+                                </button>
+                                <button onClick={() => { setIsAboutOpen(true); setIsMobileNavOpen(false); }} className="text-left text-zinc-300 font-semibold py-2 hover:text-white">About Us</button>
+                                <button onClick={() => { setIsContactOpen(true); setIsMobileNavOpen(false); }} className="text-left text-zinc-300 font-semibold py-2 hover:text-white">Contact Interface</button>
+                            </div>
+
+                            <div className="flex justify-between items-center mt-2">
+                                <div className="flex gap-4">
+                                    <Link to="/terms" onClick={() => setIsMobileNavOpen(false)} className="text-[10px] text-zinc-500 uppercase tracking-widest hover:text-indigo-400 font-mono">Terms</Link>
+                                    <Link to="/privacy" onClick={() => setIsMobileNavOpen(false)} className="text-[10px] text-zinc-500 uppercase tracking-widest hover:text-emerald-400 font-mono">Privacy</Link>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {/* Floating Left Side Dashboard / Tool Dock (Desktop & Mobile Sheet) */}
                 <motion.div
