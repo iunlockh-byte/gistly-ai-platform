@@ -3,11 +3,11 @@ import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 
 import {
     FileText, Code, Image as ImageIcon, Video, UserCheck,
-    Terminal, FileSearch, RefreshCw, FileCode, Search,
+    Terminal, FileSearch, RefreshCw, FileCode, Search, Headphones,
     FileCheck, FileJson, Share2, Database, LayoutDashboard,
     Sparkles, Zap, ChevronRight, Github, ExternalLink, Menu, X, ArrowLeft, Send, Loader2,
     Lock, Wand2, Calculator, Settings, Globe, Volume2, Copy, Play, Mail, Cpu, Orbit, Fingerprint, Shield, MessageSquare, Maximize2, Move,
-    Mic, MicOff, Bot, Check, CreditCard, Star, History, Save, FilePlus, FolderOpen, Radio
+    Mic, MicOff, Bot, Check, CreditCard, Star, History, Save, FilePlus, FolderOpen, Radio, Download
 } from 'lucide-react';
 import axios from 'axios';
 import { clsx } from 'clsx';
@@ -28,6 +28,64 @@ function cn(...inputs) {
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+// Secure Axios Config
+const nexusAxios = axios.create({
+    baseURL: API_BASE_URL,
+    headers: {
+        'X-Nexus-Shield': 'G7-NX-SECURITY-V1-ALPHA' // Cryptographic Origin Token
+    }
+});
+
+const LANGUAGES = [
+    { code: 'en', label: 'English', flag: '🇬🇧' },
+    { code: 'si', label: 'සිංහල', flag: '🇱🇰' },
+    { code: 'es', label: 'Español', flag: '🇪🇸' },
+    { code: 'fr', label: 'Français', flag: '🇫🇷' },
+    { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
+    { code: 'pt', label: 'Português', flag: '🇧🇷' },
+    { code: 'it', label: 'Italiano', flag: '🇮🇹' },
+    { code: 'nl', label: 'Nederlands', flag: '🇳🇱' },
+    { code: 'ru', label: 'Русский', flag: '🇷🇺' },
+    { code: 'uk', label: 'Українська', flag: '🇺🇦' },
+    { code: 'zh', label: '中文', flag: '🇨🇳' },
+    { code: 'ja', label: '日本語', flag: '🇯🇵' },
+    { code: 'ko', label: '한국어', flag: '🇰🇷' },
+    { code: 'ar', label: 'العربية', flag: '🇸🇦' },
+    { code: 'hi', label: 'हिन्दी', flag: '🇮🇳' },
+    { code: 'ta', label: 'தமிழ்', flag: '🇮🇳' },
+    { code: 'bn', label: 'বাংলা', flag: '🇧🇩' },
+    { code: 'tr', label: 'Türkçe', flag: '🇹🇷' },
+    { code: 'ms', label: 'Bahasa Melayu', flag: '🇲🇾' },
+    { code: 'th', label: 'ภาษาไทย', flag: '🇹🇭' },
+    { code: 'pl', label: 'Polski', flag: '🇵🇱' },
+    { code: 'sv', label: 'Svenska', flag: '🇸🇪' },
+];
+
+const translations = {
+    en: { toolHub: "Tool Hub", nodeDeployment: "NODE DEPLOYMENT CORE", searchNodes: "Search nodes...", all: "ALL", text: "TEXT", image: "IMAGE", templates: "TEMPLATES", guide: "Guide", pricing: "Pricing", about: "About Us", contact: "Contact", share: "Share", canvasMode: "Canvas Mode", coreOnline: "Core Online", history: "History", news: "News", signIn: "Sign In", tools: "Tools", newCanvas: "New Canvas", saveWorkflow: "Save", architectureName: "Architecture Name...", apiForge: "API Forge", monetize: "Monetize Intelligence", requestFeature: "Request Feature", buildTogether: "Build Together", terms: "Terms", privacy: "Privacy", refund: "Refund", liveNews: "Live News" },
+    si: { toolHub: "මෙවලම් මධ්‍යස්ථානය", nodeDeployment: "පද්ධති ඒකකය", searchNodes: "සොයන්න...", all: "සියල්ල", text: "පෙළ", image: "ඡායාරූප", templates: "ආකෘති", guide: "මඟපෙන්වීම", pricing: "මිල", about: "අප ගැන", contact: "සම්බන්ධ", share: "බෙදාගන්න", canvasMode: "කැන්වස්", coreOnline: "සක්‍රීයයි", history: "ඉතිහාසය", news: "පුවත්", signIn: "ඇතුළු වන්න", tools: "මෙවලම්", newCanvas: "නව", saveWorkflow: "සුරකින්න", architectureName: "නම...", apiForge: "API වෙළඳපොළ", monetize: "අලෙවි කරන්න", requestFeature: "ඉල්ලීම", buildTogether: "එක්ව ගොඩනගමු", terms: "කොන්දේසි", privacy: "පෞද්ගලිකත්වය", refund: "මුදල් ආපසු", liveNews: "සජීවී පුවත්" },
+    es: { toolHub: "Centro de Herramientas", nodeDeployment: "NÚCLEO DE DESPLIEGUE", searchNodes: "Buscar nodos...", all: "TODO", text: "TEXTO", image: "IMAGEN", templates: "PLANTILLAS", guide: "Guía", pricing: "Precios", about: "Nosotros", contact: "Contacto", share: "Compartir", canvasMode: "Modo Canvas", coreOnline: "Núcleo Online", history: "Historial", news: "Noticias", signIn: "Iniciar Sesión", tools: "Herramientas", newCanvas: "Nuevo", saveWorkflow: "Guardar", architectureName: "Nombre...", apiForge: "API Forge", monetize: "Monetizar", requestFeature: "Solicitar", buildTogether: "Construir Juntos", terms: "Términos", privacy: "Privacidad", refund: "Reembolso", liveNews: "Noticias en Vivo" },
+    fr: { toolHub: "Centre d'Outils", nodeDeployment: "CŒUR DE DÉPLOIEMENT", searchNodes: "Rechercher...", all: "TOUT", text: "TEXTE", image: "IMAGE", templates: "MODÈLES", guide: "Guide", pricing: "Tarifs", about: "À Propos", contact: "Contact", share: "Partager", canvasMode: "Mode Canvas", coreOnline: "Noyau En Ligne", history: "Historique", news: "Actualités", signIn: "Connexion", tools: "Outils", newCanvas: "Nouveau", saveWorkflow: "Sauver", architectureName: "Nom...", apiForge: "API Forge", monetize: "Monétiser", requestFeature: "Demander", buildTogether: "Construire Ensemble", terms: "Conditions", privacy: "Confidentialité", refund: "Remboursement", liveNews: "Actualités Live" },
+    de: { toolHub: "Werkzeug-Hub", nodeDeployment: "KERN-BEREITSTELLUNG", searchNodes: "Suchen...", all: "ALLE", text: "TEXT", image: "BILD", templates: "VORLAGEN", guide: "Anleitung", pricing: "Preise", about: "Über Uns", contact: "Kontakt", share: "Teilen", canvasMode: "Canvas-Modus", coreOnline: "Kern Online", history: "Verlauf", news: "Nachrichten", signIn: "Anmelden", tools: "Werkzeuge", newCanvas: "Neu", saveWorkflow: "Speichern", architectureName: "Name...", apiForge: "API Forge", monetize: "Monetarisieren", requestFeature: "Anfragen", buildTogether: "Gemeinsam Bauen", terms: "Bedingungen", privacy: "Datenschutz", refund: "Erstattung", liveNews: "Live-Nachrichten" },
+    pt: { toolHub: "Hub de Ferramentas", nodeDeployment: "NÚCLEO DE IMPLANTAÇÃO", searchNodes: "Buscar...", all: "TODOS", text: "TEXTO", image: "IMAGEM", templates: "MODELOS", guide: "Guia", pricing: "Preços", about: "Sobre Nós", contact: "Contato", share: "Compartilhar", canvasMode: "Modo Canvas", coreOnline: "Núcleo Online", history: "Histórico", news: "Notícias", signIn: "Entrar", tools: "Ferramentas", newCanvas: "Novo", saveWorkflow: "Salvar", architectureName: "Nome...", apiForge: "API Forge", monetize: "Monetizar", requestFeature: "Solicitar", buildTogether: "Construir Juntos", terms: "Termos", privacy: "Privacidade", refund: "Reembolso", liveNews: "Notícias ao Vivo" },
+    it: { toolHub: "Hub degli Strumenti", nodeDeployment: "NUCLEO DI DEPLOYMENT", searchNodes: "Cerca...", all: "TUTTI", text: "TESTO", image: "IMMAGINE", templates: "MODELLI", guide: "Guida", pricing: "Prezzi", about: "Chi Siamo", contact: "Contatto", share: "Condividi", canvasMode: "Modalità Canvas", coreOnline: "Core Online", history: "Cronologia", news: "Notizie", signIn: "Accedi", tools: "Strumenti", newCanvas: "Nuovo", saveWorkflow: "Salva", architectureName: "Nome...", apiForge: "API Forge", monetize: "Monetizzare", requestFeature: "Richiedi", buildTogether: "Costruire Insieme", terms: "Termini", privacy: "Privacy", refund: "Rimborso", liveNews: "Notizie Live" },
+    nl: { toolHub: "Tool Hub", nodeDeployment: "KERN-IMPLEMENTATIE", searchNodes: "Zoeken...", all: "ALLE", text: "TEKST", image: "AFBEELDING", templates: "SJABLONEN", guide: "Gids", pricing: "Prijzen", about: "Over Ons", contact: "Contact", share: "Delen", canvasMode: "Canvas Modus", coreOnline: "Kern Online", history: "Geschiedenis", news: "Nieuws", signIn: "Aanmelden", tools: "Gereedschappen", newCanvas: "Nieuw", saveWorkflow: "Opslaan", architectureName: "Naam...", apiForge: "API Forge", monetize: "Monetariseren", requestFeature: "Aanvragen", buildTogether: "Samen Bouwen", terms: "Voorwaarden", privacy: "Privacy", refund: "Terugbetaling", liveNews: "Live Nieuws" },
+    ru: { toolHub: "Центр инструментов", nodeDeployment: "ЯДРО РАЗВЕРТЫВАНИЯ", searchNodes: "Поиск...", all: "ВСЕ", text: "ТЕКСТ", image: "ИЗОБРАЖЕНИЕ", templates: "ШАБЛОНЫ", guide: "Руководство", pricing: "Цены", about: "О нас", contact: "Контакт", share: "Поделиться", canvasMode: "Режим холста", coreOnline: "Ядро онлайн", history: "История", news: "Новости", signIn: "Войти", tools: "Инструменты", newCanvas: "Новый", saveWorkflow: "Сохранить", architectureName: "Название...", apiForge: "API Forge", monetize: "Монетизировать", requestFeature: "Запросить", buildTogether: "Строить вместе", terms: "Условия", privacy: "Конфиденциальность", refund: "Возврат", liveNews: "Прямые новости" },
+    uk: { toolHub: "Центр інструментів", nodeDeployment: "ЯДРО РОЗГОРТАННЯ", searchNodes: "Пошук...", all: "ВСІ", text: "ТЕКСТ", image: "ЗОБРАЖЕННЯ", templates: "ШАБЛОНИ", guide: "Посібник", pricing: "Ціни", about: "Про нас", contact: "Контакт", share: "Поділитися", canvasMode: "Режим полотна", coreOnline: "Ядро онлайн", history: "Історія", news: "Новини", signIn: "Увійти", tools: "Інструменти", newCanvas: "Новий", saveWorkflow: "Зберегти", architectureName: "Назва...", apiForge: "API Forge", monetize: "Монетизувати", requestFeature: "Запит", buildTogether: "Будувати разом", terms: "Умови", privacy: "Конфіденційність", refund: "Повернення", liveNews: "Прямі новини" },
+    zh: { toolHub: "工具中心", nodeDeployment: "核心部署", searchNodes: "搜索节点...", all: "全部", text: "文本", image: "图像", templates: "模板", guide: "指南", pricing: "价格", about: "关于我们", contact: "联系", share: "分享", canvasMode: "画布模式", coreOnline: "核心在线", history: "历史", news: "新闻", signIn: "登录", tools: "工具", newCanvas: "新建", saveWorkflow: "保存", architectureName: "名称...", apiForge: "API 市场", monetize: "变现", requestFeature: "请求功能", buildTogether: "共同构建", terms: "条款", privacy: "隐私", refund: "退款", liveNews: "实时新闻" },
+    ja: { toolHub: "ツールハブ", nodeDeployment: "コアデプロイメント", searchNodes: "検索...", all: "すべて", text: "テキスト", image: "画像", templates: "テンプレート", guide: "ガイド", pricing: "料金", about: "私たちについて", contact: "お問い合わせ", share: "共有", canvasMode: "キャンバスモード", coreOnline: "コアオンライン", history: "履歴", news: "ニュース", signIn: "サインイン", tools: "ツール", newCanvas: "新規", saveWorkflow: "保存", architectureName: "名前...", apiForge: "APIマーケット", monetize: "収益化", requestFeature: "リクエスト", buildTogether: "共に作る", terms: "規約", privacy: "プライバシー", refund: "返金", liveNews: "ライブニュース" },
+    ko: { toolHub: "도구 허브", nodeDeployment: "핵심 배포", searchNodes: "검색...", all: "전체", text: "텍스트", image: "이미지", templates: "템플릿", guide: "가이드", pricing: "가격", about: "소개", contact: "연락처", share: "공유", canvasMode: "캔버스 모드", coreOnline: "코어 온라인", history: "기록", news: "뉴스", signIn: "로그인", tools: "도구", newCanvas: "새로 만들기", saveWorkflow: "저장", architectureName: "이름...", apiForge: "API 마켓", monetize: "수익화", requestFeature: "요청", buildTogether: "함께 만들기", terms: "약관", privacy: "개인정보", refund: "환불", liveNews: "실시간 뉴스" },
+    ar: { toolHub: "مركز الأدوات", nodeDeployment: "نواة النشر", searchNodes: "بحث...", all: "الكل", text: "نص", image: "صورة", templates: "قوالب", guide: "دليل", pricing: "الأسعار", about: "من نحن", contact: "اتصل", share: "مشاركة", canvasMode: "وضع اللوحة", coreOnline: "النواة متصلة", history: "التاريخ", news: "أخبار", signIn: "تسجيل الدخول", tools: "الأدوات", newCanvas: "جديد", saveWorkflow: "حفظ", architectureName: "الاسم...", apiForge: "سوق API", monetize: "تحقيق الربح", requestFeature: "طلب", buildTogether: "بناء معاً", terms: "الشروط", privacy: "الخصوصية", refund: "استرداد", liveNews: "أخبار مباشرة" },
+    hi: { toolHub: "टूल हब", nodeDeployment: "कोर तैनाती", searchNodes: "खोजें...", all: "सभी", text: "टेक्स्ट", image: "इमेज", templates: "टेम्पलेट", guide: "गाइड", pricing: "मूल्य निर्धारण", about: "हमारे बारे में", contact: "संपर्क", share: "शेयर करें", canvasMode: "कैनवास मोड", coreOnline: "कोर ऑनलाइन", history: "इतिहास", news: "समाचार", signIn: "साइन इन", tools: "उपकरण", newCanvas: "नया", saveWorkflow: "सहेजें", architectureName: "नाम...", apiForge: "API बाजार", monetize: "मुद्रीकृत करें", requestFeature: "अनुरोध", buildTogether: "साथ बनाएं", terms: "शर्तें", privacy: "गोपनीयता", refund: "वापसी", liveNews: "लाइव समाचार" },
+    ta: { toolHub: "கருவி மையம்", nodeDeployment: "முக்கிய பயன்படுத்தல்", searchNodes: "தேடு...", all: "அனைத்தும்", text: "உரை", image: "படம்", templates: "வார்ப்புருக்கள்", guide: "வழிகாட்டி", pricing: "விலை", about: "எங்களைப் பற்றி", contact: "தொடர்பு", share: "பகிர்", canvasMode: "கேன்வாஸ் பயன்முறை", coreOnline: "மையம் இயங்குகிறது", history: "வரலாறு", news: "செய்திகள்", signIn: "உள்நுழை", tools: "கருவிகள்", newCanvas: "புதியது", saveWorkflow: "சேமி", architectureName: "பெயர்...", apiForge: "API சந்தை", monetize: "வருவாய் ஈட்டு", requestFeature: "கோரிக்கை", buildTogether: "சேர்ந்து கட்டு", terms: "விதிமுறைகள்", privacy: "தனியுரிமை", refund: "பணம் திரும்ப", liveNews: "நேரடி செய்திகள்" },
+    bn: { toolHub: "টুল হাব", nodeDeployment: "কোর ডিপ্লয়মেন্ট", searchNodes: "অনুসন্ধান...", all: "সব", text: "টেক্সট", image: "ছবি", templates: "টেমপ্লেট", guide: "গাইড", pricing: "মূল্য", about: "আমাদের সম্পর্কে", contact: "যোগাযোগ", share: "শেয়ার", canvasMode: "ক্যানভাস মোড", coreOnline: "কোর অনলাইন", history: "ইতিহাস", news: "সংবাদ", signIn: "সাইন ইন", tools: "সরঞ্জাম", newCanvas: "নতুন", saveWorkflow: "সংরক্ষণ", architectureName: "নাম...", apiForge: "API বাজার", monetize: "মুদ্রীকরণ", requestFeature: "অনুরোধ", buildTogether: "একসাথে তৈরি", terms: "শর্তাবলী", privacy: "গোপনীয়তা", refund: "ফেরত", liveNews: "লাইভ সংবাদ" },
+    tr: { toolHub: "Araç Merkezi", nodeDeployment: "ÇEKİRDEK DAĞITIM", searchNodes: "Ara...", all: "TÜMÜ", text: "METİN", image: "GÖRSEL", templates: "ŞABLONLAR", guide: "Kılavuz", pricing: "Fiyatlar", about: "Hakkımızda", contact: "İletişim", share: "Paylaş", canvasMode: "Kanvas Modu", coreOnline: "Çekirdek Çevrimiçi", history: "Geçmiş", news: "Haberler", signIn: "Giriş Yap", tools: "Araçlar", newCanvas: "Yeni", saveWorkflow: "Kaydet", architectureName: "İsim...", apiForge: "API Pazarı", monetize: "Monetize Et", requestFeature: "İstek", buildTogether: "Birlikte İnşa Et", terms: "Şartlar", privacy: "Gizlilik", refund: "İade", liveNews: "Canlı Haberler" },
+    ms: { toolHub: "Pusat Alat", nodeDeployment: "TERAS PENEMPATAN", searchNodes: "Cari...", all: "SEMUA", text: "TEKS", image: "GAMBAR", templates: "TEMPLAT", guide: "Panduan", pricing: "Harga", about: "Tentang Kami", contact: "Hubungi", share: "Kongsi", canvasMode: "Mod Kanvas", coreOnline: "Teras Dalam Talian", history: "Sejarah", news: "Berita", signIn: "Log Masuk", tools: "Alat", newCanvas: "Baru", saveWorkflow: "Simpan", architectureName: "Nama...", apiForge: "Pasaran API", monetize: "Jana Pendapatan", requestFeature: "Permintaan", buildTogether: "Bina Bersama", terms: "Terma", privacy: "Privasi", refund: "Bayaran Balik", liveNews: "Berita Langsung" },
+    th: { toolHub: "ศูนย์เครื่องมือ", nodeDeployment: "แกนกลางการปรับใช้", searchNodes: "ค้นหา...", all: "ทั้งหมด", text: "ข้อความ", image: "รูปภาพ", templates: "เทมเพลต", guide: "คู่มือ", pricing: "ราคา", about: "เกี่ยวกับเรา", contact: "ติดต่อ", share: "แชร์", canvasMode: "โหมดแคนวาส", coreOnline: "แกนกลางออนไลน์", history: "ประวัติ", news: "ข่าว", signIn: "เข้าสู่ระบบ", tools: "เครื่องมือ", newCanvas: "ใหม่", saveWorkflow: "บันทึก", architectureName: "ชื่อ...", apiForge: "ตลาด API", monetize: "สร้างรายได้", requestFeature: "ขอฟีเจอร์", buildTogether: "สร้างร่วมกัน", terms: "ข้อกำหนด", privacy: "ความเป็นส่วนตัว", refund: "คืนเงิน", liveNews: "ข่าวสด" },
+    pl: { toolHub: "Centrum Narzędzi", nodeDeployment: "RDZEŃ WDROŻENIA", searchNodes: "Szukaj...", all: "WSZYSTKIE", text: "TEKST", image: "OBRAZ", templates: "SZABLONY", guide: "Przewodnik", pricing: "Cennik", about: "O Nas", contact: "Kontakt", share: "Udostępnij", canvasMode: "Tryb Płótna", coreOnline: "Rdzeń Online", history: "Historia", news: "Wiadomości", signIn: "Zaloguj się", tools: "Narzędzia", newCanvas: "Nowy", saveWorkflow: "Zapisz", architectureName: "Nazwa...", apiForge: "Rynek API", monetize: "Monetyzacja", requestFeature: "Prośba", buildTogether: "Budujmy Razem", terms: "Warunki", privacy: "Prywatność", refund: "Zwrot", liveNews: "Wiadomości na żywo" },
+    sv: { toolHub: "Verktygshub", nodeDeployment: "KÄRNDISTRIBUTION", searchNodes: "Sök...", all: "ALLA", text: "TEXT", image: "BILD", templates: "MALLAR", guide: "Guide", pricing: "Priser", about: "Om Oss", contact: "Kontakt", share: "Dela", canvasMode: "Canvasläge", coreOnline: "Kärna Online", history: "Historik", news: "Nyheter", signIn: "Logga in", tools: "Verktyg", newCanvas: "Ny", saveWorkflow: "Spara", architectureName: "Namn...", apiForge: "API Marknad", monetize: "Monetarisera", requestFeature: "Begäran", buildTogether: "Bygga Tillsammans", terms: "Villkor", privacy: "Integritet", refund: "Återbetalning", liveNews: "Live Nyheter" },
+};
 
 const tools = [
     {
@@ -199,6 +257,34 @@ const tools = [
         category: 'Creative',
         placeholder: 'Enter text to synthesize into speech...',
         buttonText: 'Synthesize Audio',
+        isAudio: true
+    },
+    {
+        id: 'voice-clone',
+        endpoint: '/api/voice-clone',
+        name: 'Neural Voice Clone',
+        description: 'Generate hyper-realistic voice clones from text (Nexus Aegis Powered).',
+        icon: Mic,
+        color: 'text-rose-400',
+        bg: 'bg-rose-500/10',
+        border: 'border-rose-500/20',
+        category: 'Creative',
+        placeholder: 'Enter text to clone into premium neural voice...',
+        buttonText: 'Initialize Cloning',
+        isAudio: true
+    },
+    {
+        id: 'voice-assistant',
+        endpoint: '/api/voice-assistant',
+        name: 'Nexus Voice Assistant',
+        description: 'Conversational AI that speaks and listens in real-time.',
+        icon: Headphones,
+        color: 'text-amber-400',
+        bg: 'bg-amber-500/10',
+        border: 'border-amber-500/20',
+        category: 'Creative',
+        placeholder: 'Ask the Nexus Assistant anything via text or voice...',
+        buttonText: 'Initiate Interaction',
         isAudio: true
     },
     {
@@ -409,8 +495,18 @@ const GistlyVoiceAssistant = () => {
     const [isListening, setIsListening] = useState(false);
     const [transcript, setTranscript] = useState('');
     const [isSpeaking, setIsSpeaking] = useState(false);
+    const [selectedLang, setSelectedLang] = useState('en-US');
 
-    const speak = (msg) => {
+    const speak = (msg, base64Audio = null) => {
+        if (base64Audio) {
+            const audioData = `data:audio/mp3;base64,${base64Audio}`;
+            const audio = new Audio(audioData);
+            audio.onplay = () => setIsSpeaking(true);
+            audio.onended = () => setIsSpeaking(false);
+            audio.play().catch(e => console.error("Audio Playback Error:", e));
+            return;
+        }
+
         if (!window.speechSynthesis) return;
         window.speechSynthesis.cancel(); // stop any current speech
         const utterance = new SpeechSynthesisUtterance(msg);
@@ -444,7 +540,7 @@ const GistlyVoiceAssistant = () => {
         }
 
         const recognition = new SpeechRecognition();
-        recognition.lang = 'en-US';
+        recognition.lang = selectedLang;
         recognition.continuous = false;
         recognition.interimResults = false;
 
@@ -453,16 +549,27 @@ const GistlyVoiceAssistant = () => {
             setTranscript("Listening...");
         };
 
-        recognition.onresult = (event) => {
+        recognition.onresult = async (event) => {
             const current = event.resultIndex;
             const text = event.results[current][0].transcript;
             setTranscript(text);
             setIsListening(false);
 
-            // Basic logic: if user speaks, AI responds (simplified demo)
-            setTimeout(() => {
-                speak(`I understood you said: ${text}. I'm processing that on my neural neural core.`);
-            }, 800);
+            // Gistly Neural Core Integration
+            try {
+                setTranscript("Processing...");
+                const response = await nexusAxios.post('/api/voice-assistant', {
+                    content: text
+                });
+                
+                const { result, text_response } = response.data;
+                setTranscript(text_response);
+                speak(text_response, result);
+            } catch (error) {
+                console.error("Neural Core Error:", error);
+                speak("I'm sorry, I'm having trouble connecting to my neural core right now.");
+                setTranscript("Connection Lost.");
+            }
         };
 
         recognition.onerror = () => {
@@ -535,6 +642,26 @@ const GistlyVoiceAssistant = () => {
                                         ))}
                                     </div>
                                 )}
+                            </div>
+                            <div className="flex justify-center gap-2 mt-4 pt-4 border-t border-white/5">
+                                <button
+                                    onClick={() => setSelectedLang('en-US')}
+                                    className={cn(
+                                        "text-[9px] font-black tracking-widest px-3 py-1 rounded-full transition-all",
+                                        selectedLang === 'en-US' ? "bg-indigo-500 text-white shadow-[0_0_10px_rgba(99,102,241,0.5)]" : "bg-white/5 text-zinc-500 hover:text-zinc-300"
+                                    )}
+                                >
+                                    EN-US
+                                </button>
+                                <button
+                                    onClick={() => setSelectedLang('si-LK')}
+                                    className={cn(
+                                        "text-[9px] font-black tracking-widest px-3 py-1 rounded-full transition-all",
+                                        selectedLang === 'si-LK' ? "bg-indigo-500 text-white shadow-[0_0_10px_rgba(99,102,241,0.5)]" : "bg-white/5 text-zinc-500 hover:text-zinc-300"
+                                    )}
+                                >
+                                    SI-LK
+                                </button>
                             </div>
                         </div>
                     </motion.div>
@@ -659,18 +786,18 @@ const PricingModal = ({ isOpen, onClose }) => {
                         initial={{ scale: 0.95, y: 20 }}
                         animate={{ scale: 1, y: 0 }}
                         exit={{ scale: 0.95, y: 20 }}
-                        className="bg-[#09090b] border border-white/10 rounded-[40px] p-8 md:p-12 max-w-6xl w-full relative shadow-3xl"
+                        className="bg-[#09090b] border border-white/10 rounded-[32px] p-6 md:p-10 max-w-4xl w-full relative shadow-3xl max-h-[90vh] overflow-y-auto"
                     >
                         <button
                             onClick={onClose}
-                            className="absolute top-8 right-8 text-zinc-500 hover:text-white transition-colors"
+                            className="absolute top-6 right-6 text-zinc-500 hover:text-white transition-colors z-[210]"
                         >
-                            <X className="w-6 h-6" />
+                            <X className="w-5 h-5" />
                         </button>
 
-                        <div className="text-center mb-12">
-                            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">Expand Your Intelligence</h2>
-                            <p className="text-zinc-500 max-w-xl mx-auto text-lg leading-relaxed">
+                        <div className="text-center mb-8">
+                            <h2 className="text-3xl md:text-4xl font-bold text-white mb-3 tracking-tight">Expand Your Intelligence</h2>
+                            <p className="text-zinc-500 max-w-lg mx-auto text-sm leading-relaxed">
                                 Choose the neural bandwidth that fits your evolution. No limits, just pure execution.
                             </p>
                         </div>
@@ -679,9 +806,9 @@ const PricingModal = ({ isOpen, onClose }) => {
                             {plans.map((plan, i) => (
                                 <motion.div
                                     key={i}
-                                    whileHover={{ y: -10 }}
+                                    whileHover={{ y: -5 }}
                                     className={cn(
-                                        "relative border p-8 rounded-[32px] flex flex-col transition-all",
+                                        "relative border p-6 rounded-3xl flex flex-col transition-all",
                                         plan.color
                                     )}
                                 >
@@ -691,20 +818,20 @@ const PricingModal = ({ isOpen, onClose }) => {
                                         </div>
                                     )}
 
-                                    <div className="mb-8">
-                                        <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
+                                    <div className="mb-6">
+                                        <h3 className="text-lg font-bold text-white mb-1">{plan.name}</h3>
                                         <div className="flex items-baseline gap-1">
-                                            <span className="text-4xl font-black text-white">{plan.price}</span>
-                                            {plan.period && <span className="text-zinc-500 font-medium text-sm">{plan.period}</span>}
+                                            <span className="text-3xl font-black text-white">{plan.price}</span>
+                                            {plan.period && <span className="text-zinc-500 font-medium text-xs">{plan.period}</span>}
                                         </div>
-                                        <p className="text-zinc-500 text-sm mt-3">{plan.desc}</p>
+                                        <p className="text-zinc-500 text-xs mt-2">{plan.desc}</p>
                                     </div>
 
-                                    <div className="space-y-4 mb-10 flex-1">
+                                    <div className="space-y-3 mb-6 flex-1">
                                         {plan.features.map((feat, j) => (
-                                            <div key={j} className="flex items-start gap-3 text-sm">
-                                                <div className="mt-1 flex-shrink-0 w-4 h-4 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                                                    <Check className="w-2.5 h-2.5 text-emerald-400" />
+                                            <div key={j} className="flex items-start gap-2 text-xs">
+                                                <div className="mt-0.5 flex-shrink-0 w-3.5 h-3.5 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                                                    <Check className="w-2 h-2 text-emerald-400" />
                                                 </div>
                                                 <span className="text-zinc-400 font-medium">{feat}</span>
                                             </div>
@@ -717,20 +844,20 @@ const PricingModal = ({ isOpen, onClose }) => {
                                                     disabled={isLoading === plan.name}
                                                     onClick={() => handleCheckout(plan.price_id, 'lemonsqueezy', plan.name, plan.price)}
                                                     className={cn(
-                                                        "w-full py-3 rounded-2xl font-bold text-sm transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2",
+                                                        "w-full py-2.5 rounded-xl font-bold text-xs transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2",
                                                         plan.popular
                                                             ? "bg-indigo-500 text-white hover:bg-indigo-400 shadow-indigo-500/25"
                                                             : "bg-white/5 text-zinc-300 hover:bg-white/10"
                                                     )}
                                                 >
                                                     {isLoading === plan.name ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                                                    {isLoading === plan.name ? "Connecting..." : "Pay via Card (Lemon Squeezy)"}
+                                                    {isLoading === plan.name ? "Connecting..." : "Pay via Card"}
                                                 </button>
                                                 <button
                                                     disabled={isLoading === plan.name}
                                                     onClick={() => handleCheckout(plan.price_id, 'paypal', plan.name, plan.price)}
                                                     className={cn(
-                                                        "w-full py-3 rounded-2xl font-bold text-sm transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 border",
+                                                        "w-full py-2.5 rounded-xl font-bold text-xs transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 border",
                                                         plan.popular
                                                             ? "bg-[#0070ba] hover:bg-[#005ea6] text-white border-[#0070ba]"
                                                             : "bg-transparent border-[#0070ba] text-[#0070ba] hover:bg-[#0070ba]/10"
@@ -741,25 +868,25 @@ const PricingModal = ({ isOpen, onClose }) => {
                                                 </button>
                                             </div>
                                         ) : (
-                                            <button
-                                                disabled={isLoading === plan.name}
-                                                onClick={() => {
-                                                    if (plan.price === "$0") {
-                                                        onClose();
-                                                    } else if (plan.price === "$99") {
-                                                        alert("Enterprise contact initiated. Check Neural Uplink.");
-                                                    }
-                                                }}
-                                                className={cn(
-                                                    "w-full py-4 rounded-2xl font-bold text-sm transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2",
-                                                    plan.popular
-                                                        ? "bg-indigo-500 text-white hover:bg-indigo-400 shadow-indigo-500/25"
-                                                        : "bg-white/5 text-zinc-300 hover:bg-white/10"
-                                                )}
-                                            >
-                                                {isLoading === plan.name ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                                                {isLoading === plan.name ? "Connecting..." : plan.button}
-                                            </button>
+                                                <button
+                                                    disabled={isLoading === plan.name}
+                                                    onClick={() => {
+                                                        if (plan.price === "$0") {
+                                                            onClose();
+                                                        } else if (plan.price === "$99" || plan.price === "$149") {
+                                                            alert("Premium contact initiated. Check Neural Uplink.");
+                                                        }
+                                                    }}
+                                                    className={cn(
+                                                        "w-full py-3 rounded-xl font-bold text-xs transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2",
+                                                        plan.popular
+                                                            ? "bg-indigo-500 text-white hover:bg-indigo-400 shadow-indigo-500/25"
+                                                            : "bg-white/5 text-zinc-300 hover:bg-white/10"
+                                                    )}
+                                                >
+                                                    {isLoading === plan.name ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                                                    {isLoading === plan.name ? "Connecting..." : plan.button}
+                                                </button>
                                         )}
                                     </div>
                                 </motion.div>
@@ -777,7 +904,7 @@ const PricingModal = ({ isOpen, onClose }) => {
 };
 
 // Represents a single floating tool execution node on the canvas
-const DraggableNode = ({ data, removeNode, updateNodePosition }) => {
+const DraggableNode = ({ data, removeNode, updateNodePosition, exportNodeData }) => {
     const [inputText, setInputText] = useState('');
     const [result, setResult] = useState('');
     const [loading, setLoading] = useState(false);
@@ -813,6 +940,34 @@ const DraggableNode = ({ data, removeNode, updateNodePosition }) => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const [isListening, setIsListening] = useState(false);
+
+    const startListening = () => {
+        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+            alert("Speech recognition is not supported in this browser.");
+            return;
+        }
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'en-US';
+
+        recognition.onstart = () => setIsListening(true);
+        recognition.onend = () => setIsListening(false);
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            setInputText(prev => prev ? `${prev} ${transcript}` : transcript);
+        };
+        recognition.onerror = (event) => {
+            console.error("Speech Recognition Error:", event.error);
+            setIsListening(false);
+        };
+
+        recognition.start();
     };
 
     const handleRunTool = async () => {
@@ -876,23 +1031,47 @@ const DraggableNode = ({ data, removeNode, updateNodePosition }) => {
                     </div>
                     <h3 className="font-bold text-white text-sm tracking-tight">{tool.name}</h3>
                 </div>
-                <button
-                    onClick={() => removeNode(data.id)}
-                    className="text-zinc-500 hover:text-red-400 transition-colors p-1 relative z-50 pointer-events-auto cursor-pointer"
-                >
-                    <X className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => exportNodeData(data, tool.name, result)}
+                        disabled={!result}
+                        className="text-zinc-500 hover:text-emerald-400 transition-colors p-1 disabled:opacity-30"
+                        title="Export Node Data"
+                    >
+                        <Download className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                        onClick={() => removeNode(data.id)}
+                        className="text-zinc-500 hover:text-red-400 transition-colors p-1 relative z-50 pointer-events-auto cursor-pointer"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
             </div>
 
             {/* Content Area */}
             <div className="p-0 flex flex-col cursor-auto">
-                <textarea
-                    value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    placeholder={tool.placeholder}
-                    className="w-full h-[120px] bg-transparent p-4 text-zinc-300 focus:ring-0 outline-none resize-none font-mono text-xs leading-relaxed placeholder:text-zinc-700 border-b border-white/5"
-                    spellCheck={false}
-                />
+                <div className="relative">
+                    <textarea
+                        value={inputText}
+                        onChange={(e) => setInputText(e.target.value)}
+                        placeholder={tool.placeholder}
+                        className="w-full h-[120px] bg-transparent p-4 text-zinc-300 focus:ring-0 outline-none resize-none font-mono text-xs leading-relaxed placeholder:text-zinc-700 border-b border-white/5"
+                        spellCheck={false}
+                    />
+                    <button 
+                        onClick={startListening}
+                        className={cn(
+                            "absolute bottom-4 right-4 p-2 rounded-full transition-all border",
+                            isListening 
+                                ? "bg-red-500/20 border-red-500/50 text-red-500 animate-pulse scale-110 shadow-[0_0_15px_rgba(239,68,68,0.3)]" 
+                                : "bg-white/5 border-white/10 text-zinc-500 hover:text-white hover:bg-white/10"
+                        )}
+                        title="Voice Input"
+                    >
+                        <Mic className="w-3.5 h-3.5" />
+                    </button>
+                </div>
 
                 <div className="p-3 bg-black/20 flex justify-end shrink-0">
                     <button
@@ -939,10 +1118,30 @@ const DraggableNode = ({ data, removeNode, updateNodePosition }) => {
                                         />
                                     </div>
                                 ) : tool.isAudio ? (
-                                    <div className="py-4">
-                                        <audio controls className="w-full accent-violet-500 scale-90" autoPlay>
+                                    <div className="py-6 space-y-4">
+                                        <div className="flex items-center justify-center gap-1.5 h-12">
+                                            {[...Array(20)].map((_, i) => (
+                                                <motion.div
+                                                    key={i}
+                                                    animate={{ 
+                                                        height: [8, Math.random() * 40 + 10, 8] 
+                                                    }}
+                                                    transition={{ 
+                                                        repeat: Infinity, 
+                                                        duration: 0.5 + Math.random(),
+                                                        ease: "easeInOut"
+                                                    }}
+                                                    className="w-1 bg-gradient-to-t from-indigo-500 to-cyan-400 rounded-full opacity-60"
+                                                />
+                                            ))}
+                                        </div>
+                                        <audio controls className="w-full accent-indigo-500 scale-90 rounded-none h-8" autoPlay>
                                             <source src={`data:audio/mp3;base64,${result}`} type="audio/mp3" />
                                         </audio>
+                                        <div className="flex justify-between items-center px-2">
+                                            <span className="text-[8px] font-black text-zinc-600 uppercase tracking-[0.2em]">Neural Synthesis Active</span>
+                                            <span className="text-[8px] font-mono text-indigo-400 opacity-50">AEGIS_STREAM_v4</span>
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="text-zinc-300 font-sans text-xs leading-loose whitespace-pre-wrap">
@@ -968,6 +1167,8 @@ export default function App() {
     const [history, setHistory] = useState([]);
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [lang, setLang] = useState('en');
+    const t = translations[lang];
 
     // Modal states
     const [isGuideOpen, setIsGuideOpen] = useState(false);
@@ -1014,13 +1215,7 @@ export default function App() {
         };
     }, []);
 
-    // Secure Axios Config
-    const nexusAxios = axios.create({
-        baseURL: API_BASE_URL,
-        headers: {
-            'X-Nexus-Shield': 'G7-NX-SECURITY-V1-ALPHA' // Cryptographic Origin Token
-        }
-    });
+
 
     const trackVisit = async () => {
         try {
@@ -1041,6 +1236,23 @@ export default function App() {
     
     useEffect(() => {
         trackVisit();
+        
+        // Load shared workspace from URL if exists
+        const params = new URLSearchParams(window.location.search);
+        const shareData = params.get('share');
+        if (shareData) {
+            try {
+                const decoded = JSON.parse(atob(shareData));
+                if (decoded.nodes) {
+                    setNodes(decoded.nodes);
+                    if (decoded.name) setWorkflowName(decoded.name);
+                    // Silent clear for clean UX
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            } catch (e) {
+                console.warn("Nexus Aegis: Invalid Share Token.");
+            }
+        }
     }, []);
 
     const handleContactSubmit = async (e) => {
@@ -1124,6 +1336,60 @@ export default function App() {
         } catch (err) {
             console.error(err);
         }
+    };
+
+    // --- Workflow Templates & Export Logic ---
+    const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
+    
+    const templates = [
+        {
+            name: "SEO Intelligence Core",
+            desc: "Complete SEO research & content optimization pipeline.",
+            nodes: [
+                { id: `node-${Date.now()}-1`, toolId: 'seo-analyzer', x: 400, y: 150 },
+                { id: `node-${Date.now()}-2`, toolId: 'keyword-extractor', x: 400, y: 450 },
+                { id: `node-${Date.now()}-3`, toolId: 'content-improver', x: 900, y: 300 }
+            ]
+        },
+        {
+            name: "Social Media Engine",
+            desc: "Visuals and captions for multi-platform deployment.",
+            nodes: [
+                { id: `node-${Date.now()}-1`, toolId: 'flux-lightning', x: 400, y: 150 },
+                { id: `node-${Date.now()}-2`, toolId: 'marketing-copy', x: 900, y: 150 }
+            ]
+        },
+        {
+            name: "Cinematic Voice Production",
+            desc: "Premium neural pipeline for professional voiceovers and clones.",
+            nodes: [
+                { id: `node-${Date.now()}-1`, toolId: 'grammar-fix', x: 200, y: 100 },
+                { id: `node-${Date.now()}-2`, toolId: 'voice-clone', x: 700, y: 200 }
+            ]
+        }
+    ];
+
+    const applyTemplate = (template) => {
+        setNodes(template.nodes);
+        setWorkflowName(template.name);
+        setIsTemplatesOpen(false);
+    };
+
+    const shareWorkspace = () => {
+        const data = btoa(JSON.stringify({ nodes, name: workflowName }));
+        const url = `${window.location.origin}?share=${data}`;
+        navigator.clipboard.writeText(url);
+        alert("Encrypted Workspace Link copied to clipboard!");
+    };
+
+    const exportNodeData = (nodeData, toolName, result) => {
+        const content = `--- GISTLY AI NODE EXPORT ---\nTool: ${toolName}\nResult:\n${result}`;
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `gistly-export-${Date.now()}.txt`;
+        a.click();
     };
 
     const clearCanvas = () => {
@@ -1233,7 +1499,7 @@ export default function App() {
                             <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center group-hover:bg-indigo-500/20 transition-all shadow-[0_0_15px_rgba(99,102,241,0.2)]">
                                 <Sparkles className="text-indigo-400 w-4 h-4" />
                             </div>
-                            <span className="text-xl font-bold tracking-tight text-white font-display">Gistly<span className="text-indigo-400">.ai</span> <span className="hidden md:inline-block text-[10px] text-zinc-500 uppercase tracking-widest ml-2 bg-white/5 py-1 px-2 rounded-full border border-white/5">Canvas Mode</span></span>
+                            <span className="text-xl font-bold tracking-tight text-white font-display">Gistly<span className="text-indigo-400">.ai</span> <span className="hidden md:inline-block text-[10px] text-zinc-500 uppercase tracking-widest ml-2 bg-white/5 py-1 px-2 rounded-full border border-white/5">{t.canvasMode}</span></span>
                         </div>
 
                         {/* Mobile Menu Toggle Button */}
@@ -1249,26 +1515,64 @@ export default function App() {
 
                         <div className="hidden md:flex items-center gap-6 text-sm font-medium">
                             <button onClick={() => setIsNewsOpen(true)} className="text-red-400 hover:text-red-300 font-bold tracking-widest uppercase text-xs flex items-center gap-2 border border-red-500/20 bg-red-500/10 px-3 py-1.5 rounded-full shadow-[0_0_15px_rgba(239,68,68,0.2)]">
-                                <Radio className="w-3.5 h-3.5 animate-pulse" /> Live News
+                                <Radio className="w-3.5 h-3.5 animate-pulse" /> {t.liveNews}
                             </button>
-                            <button onClick={() => setIsGuideOpen(true)} className="text-zinc-400 hover:text-white transition-colors">Guide</button>
+                            <button onClick={() => setIsGuideOpen(true)} className="text-zinc-400 hover:text-white transition-colors">{t.guide}</button>
                             <button onClick={() => setIsPricingOpen(true)} className="text-indigo-400 hover:text-indigo-300 font-bold transition-colors flex items-center gap-2">
-                                <Star className="w-4 h-4 fill-indigo-400/20" /> Pricing
+                                <Star className="w-4 h-4 fill-indigo-400/20" /> {t.pricing}
                             </button>
-                            <button onClick={() => setIsAboutOpen(true)} className="text-zinc-400 hover:text-white transition-colors">About Us</button>
-                            <button onClick={() => setIsContactOpen(true)} className="text-zinc-400 hover:text-white transition-colors">Contact</button>
+                            <button onClick={() => setIsAboutOpen(true)} className="text-zinc-400 hover:text-white transition-colors">{t.about}</button>
+                            <button onClick={() => setIsContactOpen(true)} className="text-zinc-400 hover:text-white transition-colors">{t.contact}</button>
+                            <button 
+                                onClick={shareWorkspace}
+                                className="px-4 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 rounded-xl text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(99,102,241,0.1)]"
+                            >
+                                <Share2 className="w-3.5 h-3.5" /> {t.share}
+                            </button>
                             <div className="flex items-center gap-2 text-indigo-400/90 bg-indigo-400/10 px-3 py-1.5 rounded-full border border-indigo-400/20 cursor-default select-none pointer-events-none">
                                 <div className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></div>
-                                <span className="text-xs font-semibold tracking-wide uppercase">Core Online</span>
+                                <span className="text-xs font-semibold tracking-wide uppercase">{t.coreOnline}</span>
                             </div>
                             <SignedOut>
                                 <SignInButton mode="modal">
-                                    <button className="bg-white text-black px-4 py-2 rounded-lg font-semibold hover:bg-zinc-200 transition-all text-xs">Sign In</button>
+                                    <button className="bg-white text-black px-4 py-2 rounded-lg font-semibold hover:bg-zinc-200 transition-all text-xs">{t.signIn}</button>
                                 </SignInButton>
                             </SignedOut>
                             <SignedIn>
                                 <UserButton appearance={{ elements: { userButtonAvatarBox: "w-8 h-8" } }} />
                             </SignedIn>
+                        </div>
+                        <div className="flex items-center gap-2 ml-3 relative">
+                            <div className="relative">
+                                <button
+                                    id="lang-toggle"
+                                    onClick={() => document.getElementById('lang-dropdown').classList.toggle('hidden')}
+                                    className="flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-bold text-[11px] px-3 py-1.5 rounded-full hover:bg-indigo-500/20 transition-all shadow-[0_0_10px_rgba(99,102,241,0.15)]"
+                                >
+                                    <Globe className="w-3.5 h-3.5" />
+                                    <span>{LANGUAGES.find(l => l.code === lang)?.flag} {LANGUAGES.find(l => l.code === lang)?.label}</span>
+                                    <ChevronRight className="w-3 h-3 rotate-90" />
+                                </button>
+                                <div
+                                    id="lang-dropdown"
+                                    className="hidden absolute right-0 mt-2 w-48 bg-[#111113]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.5)] z-[500] overflow-hidden"
+                                    style={{ maxHeight: '300px', overflowY: 'auto' }}
+                                >
+                                    {LANGUAGES.map(l => (
+                                        <button
+                                            key={l.code}
+                                            onClick={() => { setLang(l.code); document.getElementById('lang-dropdown').classList.add('hidden'); }}
+                                            className={cn(
+                                                "w-full flex items-center gap-3 px-4 py-2.5 text-xs text-left transition-all hover:bg-indigo-500/10",
+                                                lang === l.code ? "text-indigo-400 bg-indigo-500/10 font-bold" : "text-zinc-400"
+                                            )}
+                                        >
+                                            <span className="text-base">{l.flag}</span>
+                                            <span>{l.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </nav>
@@ -1283,18 +1587,18 @@ export default function App() {
                             className="md:hidden fixed top-16 left-0 right-0 z-40 bg-[#09090b]/95 backdrop-blur-2xl border-b border-white/10 px-6 py-6 flex flex-col gap-4 shadow-2xl"
                         >
                             <div className="flex flex-col gap-2 border-b border-white/5 pb-4">
-                                <button onClick={() => { setIsGuideOpen(true); setIsMobileNavOpen(false); }} className="text-left text-zinc-300 font-semibold py-2 hover:text-white">User Guide</button>
+                                <button onClick={() => { setIsGuideOpen(true); setIsMobileNavOpen(false); }} className="text-left text-zinc-300 font-semibold py-2 hover:text-white">{t.guide}</button>
                                 <button onClick={() => { setIsPricingOpen(true); setIsMobileNavOpen(false); }} className="text-left text-indigo-400 font-semibold py-2 hover:text-indigo-300 flex items-center gap-2">
-                                    <Star className="w-4 h-4 fill-indigo-400/20" /> Pricing Options
+                                    <Star className="w-4 h-4 fill-indigo-400/20" /> {t.pricing}
                                 </button>
-                                <button onClick={() => { setIsAboutOpen(true); setIsMobileNavOpen(false); }} className="text-left text-zinc-300 font-semibold py-2 hover:text-white">About Us</button>
-                                <button onClick={() => { setIsContactOpen(true); setIsMobileNavOpen(false); }} className="text-left text-zinc-300 font-semibold py-2 hover:text-white">Contact Interface</button>
+                                <button onClick={() => { setIsAboutOpen(true); setIsMobileNavOpen(false); }} className="text-left text-zinc-300 font-semibold py-2 hover:text-white">{t.about}</button>
+                                <button onClick={() => { setIsContactOpen(true); setIsMobileNavOpen(false); }} className="text-left text-zinc-300 font-semibold py-2 hover:text-white">{t.contact}</button>
                             </div>
 
                             <div className="flex justify-between items-center mt-2">
                                 <div className="flex gap-4">
-                                    <Link to="/terms" onClick={() => setIsMobileNavOpen(false)} className="text-[10px] text-zinc-500 uppercase tracking-widest hover:text-indigo-400 font-mono">Terms</Link>
-                                    <Link to="/privacy" onClick={() => setIsMobileNavOpen(false)} className="text-[10px] text-zinc-500 uppercase tracking-widest hover:text-emerald-400 font-mono">Privacy</Link>
+                                    <Link to="/terms" onClick={() => setIsMobileNavOpen(false)} className="text-[10px] text-zinc-500 uppercase tracking-widest hover:text-indigo-400 font-mono">{t.terms}</Link>
+                                    <Link to="/privacy" onClick={() => setIsMobileNavOpen(false)} className="text-[10px] text-zinc-500 uppercase tracking-widest hover:text-emerald-400 font-mono">{t.privacy}</Link>
                                 </div>
                             </div>
                         </motion.div>
@@ -1315,12 +1619,13 @@ export default function App() {
                     <div className="mb-6 space-y-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <h2 className="text-sm font-bold text-white uppercase tracking-widest mb-1 flex items-center gap-2"><LayoutDashboard className="w-4 h-4 text-indigo-400" /> Tool Hub</h2>
-                                <p className="text-[10px] text-zinc-500 font-mono tracking-tighter">NODE DEPLOYMENT CORE</p>
+                                <h2 className="text-sm font-bold text-white uppercase tracking-widest mb-1 flex items-center gap-2"><LayoutDashboard className="w-4 h-4 text-indigo-400" /> {t.toolHub}</h2>
+                                <p className="text-[10px] text-zinc-500 font-mono tracking-tighter">{t.nodeDeployment}</p>
                             </div>
                             <div className="flex gap-2">
                                 <button onClick={clearCanvas} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-zinc-500 hover:text-white transition-colors border border-white/5" title="New Canvas"><FilePlus className="w-4 h-4" /></button>
                                 <button onClick={fetchHistory} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-zinc-500 hover:text-indigo-400 transition-colors border border-white/5" title="Neural History"><History className="w-4 h-4" /></button>
+                                <button onClick={shareWorkspace} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-zinc-500 hover:text-emerald-400 transition-colors border border-white/5" title="Share Architecture"><Share2 className="w-4 h-4" /></button>
                             </div>
                         </div>
 
@@ -1329,7 +1634,7 @@ export default function App() {
                                 value={workflowName}
                                 onChange={(e) => setWorkflowName(e.target.value)}
                                 className="bg-transparent text-[11px] text-zinc-300 outline-none w-full"
-                                placeholder="Architecture Name..."
+                                placeholder={t.architectureName}
                             />
                             <button
                                 onClick={saveWorkflow}
@@ -1348,46 +1653,73 @@ export default function App() {
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="w-full bg-black/40 border border-white/5 focus:border-indigo-500/50 rounded-xl py-2 pl-9 pr-4 text-[11px] text-zinc-300 outline-none transition-all placeholder:text-zinc-700"
-                                placeholder="Search nodes..."
+                                placeholder={t.searchNodes}
                             />
                         </div>
                     </div>
 
                     {/* Filters */}
                     <div className="flex flex-wrap gap-2 mb-6 border-b border-white/5 pb-4">
-                        {categories.map((cat) => (
+                        {[
+                            { id: 'ALL', label: t.all },
+                            { id: 'TEXT', label: t.text },
+                            { id: 'IMAGE', label: t.image },
+                            { id: 'TEMPLATES', label: t.templates }
+                        ].map((cat) => (
                             <button
-                                key={cat}
-                                onClick={() => setSelectedCategory(cat)}
+                                key={cat.id}
+                                onClick={() => {
+                                    if (cat.id === 'TEMPLATES') setIsTemplatesOpen(true);
+                                    else {
+                                        setSelectedCategory(cat.id);
+                                        setIsTemplatesOpen(false);
+                                    }
+                                }}
                                 className={cn(
                                     "px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all",
-                                    selectedCategory === cat
+                                    (selectedCategory === cat.id && !isTemplatesOpen) || (cat.id === 'TEMPLATES' && isTemplatesOpen)
                                         ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
                                         : "bg-white/5 text-zinc-500 hover:bg-white/10 hover:text-white border border-transparent"
                                 )}
                             >
-                                {cat}
+                                {cat.label}
                             </button>
                         ))}
                     </div>
 
-                    {/* Tool List */}
+                    {/* Tool/Template List */}
                     <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent pr-2 flex flex-col gap-3">
-                        {filteredTools.map((tool) => (
-                            <div
-                                key={tool.id}
-                                onClick={() => addNode(tool.id)}
-                                className="group bg-black/40 border border-white/5 hover:border-indigo-500/30 p-3 rounded-xl transition-all cursor-pointer flex items-center gap-3 hover:bg-white/[0.02]"
-                            >
-                                <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border", tool.bg, tool.border)}>
-                                    <tool.icon className={cn("w-5 h-5", tool.color)} />
+                        {isTemplatesOpen ? (
+                            templates.map((temp, i) => (
+                                <div
+                                    key={i}
+                                    onClick={() => applyTemplate(temp)}
+                                    className="group bg-indigo-500/5 border border-indigo-500/20 hover:border-indigo-500/50 p-4 rounded-xl transition-all cursor-pointer flex flex-col gap-2"
+                                >
+                                    <h3 className="text-xs font-bold text-indigo-300 uppercase tracking-widest">{temp.name}</h3>
+                                    <p className="text-[10px] text-zinc-500 italic">{temp.desc}</p>
+                                    <div className="flex items-center gap-1 text-[8px] text-indigo-400 font-bold mt-1 uppercase">
+                                        <Zap className="w-2.5 h-2.5" /> Initialize Architecture
+                                    </div>
                                 </div>
-                                <div>
-                                    <h3 className="text-sm font-bold text-zinc-200 group-hover:text-indigo-400 transition-colors">{tool.name}</h3>
-                                    <p className="text-[10px] text-zinc-600 line-clamp-1">{tool.description}</p>
+                            ))
+                        ) : (
+                            filteredTools.map((tool) => (
+                                <div
+                                    key={tool.id}
+                                    onClick={() => addNode(tool.id)}
+                                    className="group bg-black/40 border border-white/5 hover:border-indigo-500/30 p-3 rounded-xl transition-all cursor-pointer flex items-center gap-3 hover:bg-white/[0.02]"
+                                >
+                                    <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border", tool.bg, tool.border)}>
+                                        <tool.icon className={cn("w-5 h-5", tool.color)} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-sm font-bold text-zinc-200 group-hover:text-indigo-400 transition-colors">{tool.name}</h3>
+                                        <p className="text-[10px] text-zinc-600 line-clamp-1">{tool.description}</p>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))
+                        )}
 
                         {/* Request Button Inside Scroll to save space */}
                         <div className="flex flex-col gap-2 mt-6 mb-4">
@@ -1397,8 +1729,8 @@ export default function App() {
                             >
                                 <Cpu className="w-5 h-5 group-hover:scale-110 transition-transform text-indigo-300" />
                                 <div className="text-center">
-                                    <p className="text-[10px] font-black uppercase tracking-widest">API Forge Marketplace</p>
-                                    <p className="text-[8px] text-zinc-600 font-bold uppercase mt-1 tracking-tighter">Monetize Neural Intelligence</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest">{t.apiForge}</p>
+                                    <p className="text-[8px] text-zinc-600 font-bold uppercase mt-1 tracking-tighter">{t.monetize}</p>
                                 </div>
                             </button>
 
@@ -1408,8 +1740,8 @@ export default function App() {
                             >
                                 <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform text-zinc-500" />
                                 <div className="text-center">
-                                    <p className="text-[10px] font-black uppercase tracking-widest">Request Custom Node</p>
-                                    <p className="text-[8px] text-zinc-700 font-bold uppercase mt-1 tracking-tighter">Private Architecture</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest">{t.requestFeature}</p>
+                                    <p className="text-[8px] text-zinc-700 font-bold uppercase mt-1 tracking-tighter">{t.buildTogether}</p>
                                 </div>
                             </button>
                         </div>
@@ -1448,6 +1780,7 @@ export default function App() {
                             data={node}
                             removeNode={removeNode}
                             updateNodePosition={updateNodePosition}
+                            exportNodeData={exportNodeData}
                         />
                     ))}
                 </div>
@@ -1841,12 +2174,12 @@ export default function App() {
                             className={cn("flex flex-col items-center justify-center w-16 h-full gap-1 transition-colors", isMobileMenuOpen ? "text-indigo-400" : "text-zinc-500 hover:text-zinc-300")}
                         >
                             <LayoutDashboard className="w-6 h-6" />
-                            <span className="text-[10px] font-bold tracking-wider">Tools</span>
+                            <span className="text-[10px] font-bold tracking-wider">{t.tools}</span>
                         </button>
 
                         <button onClick={fetchHistory} className="flex flex-col items-center justify-center w-16 h-full gap-1 text-zinc-500 hover:text-indigo-400 transition-colors">
                             <History className="w-6 h-6" />
-                            <span className="text-[10px] font-bold tracking-wider">History</span>
+                            <span className="text-[10px] font-bold tracking-wider">{t.history}</span>
                         </button>
 
                         {/* Floating FAB - Center Clear Canvas Action */}
@@ -1862,22 +2195,13 @@ export default function App() {
 
                         <button onClick={() => setIsNewsOpen(true)} className="flex flex-col items-center justify-center w-16 h-full gap-1 text-zinc-500 hover:text-red-400 transition-colors">
                             <Radio className="w-6 h-6 animate-pulse text-red-500" />
-                            <span className="text-[10px] font-bold tracking-wider">News</span>
+                            <span className="text-[10px] font-bold tracking-wider">{t.news}</span>
                         </button>
 
-                        <div className="flex flex-col items-center justify-center w-16 h-full gap-1">
-                            <SignedIn>
-                                <UserButton appearance={{ elements: { userButtonAvatarBox: "w-7 h-7 border-2 border-[#09090b] shadow-md" } }} />
-                            </SignedIn>
-                            <SignedOut>
-                                <SignInButton mode="modal">
-                                    <button className="text-zinc-500 flex flex-col items-center gap-1 hover:text-zinc-300">
-                                        <UserCheck className="w-6 h-6" />
-                                        <span className="text-[10px] font-bold tracking-wider">Sign In</span>
-                                    </button>
-                                </SignInButton>
-                            </SignedOut>
-                        </div>
+                        <button onClick={() => setLang(lang === 'en' ? 'si' : 'en')} className="flex flex-col items-center justify-center w-16 h-full gap-1 text-zinc-500 hover:text-indigo-400 transition-colors">
+                            <Globe className="w-6 h-6" />
+                            <span className="text-[10px] font-bold tracking-wider">{lang === 'en' ? 'සිංහල' : 'EN'}</span>
+                        </button>
                     </div>
                 </div>
 
@@ -1885,11 +2209,11 @@ export default function App() {
                 <div className="hidden md:flex fixed bottom-2 right-6 z-50 items-center gap-4 text-[10px] text-zinc-500 font-mono tracking-widest uppercase bg-black/40 backdrop-blur-md px-4 py-2 rounded-xl border border-white/5">
                     <button onClick={() => setIsAdminOpen(true)} className="hover:text-amber-400 transition-colors opacity-50 hover:opacity-100 uppercase">Nexus</button>
                     <span className="w-1 h-1 rounded-full bg-zinc-700"></span>
-                    <Link to="/terms" className="hover:text-indigo-400 transition-colors">Terms</Link>
+                    <Link to="/terms" className="hover:text-indigo-400 transition-colors">{t.terms}</Link>
                     <span className="w-1 h-1 rounded-full bg-zinc-700"></span>
-                    <Link to="/privacy" className="hover:text-emerald-400 transition-colors">Privacy</Link>
+                    <Link to="/privacy" className="hover:text-emerald-400 transition-colors">{t.privacy}</Link>
                     <span className="w-1 h-1 rounded-full bg-zinc-700"></span>
-                    <Link to="/refund" className="hover:text-rose-400 transition-colors">Refund</Link>
+                    <Link to="/refund" className="hover:text-rose-400 transition-colors">{t.refund}</Link>
                     <span className="w-1 h-1 rounded-full bg-zinc-700"></span>
                     <div className="flex items-center gap-2 text-cyan-400 font-black italic">
                         <Shield className="w-3 h-3" />

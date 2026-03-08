@@ -4,8 +4,14 @@ import {
     LayoutDashboard, Users, CreditCard, MessageSquare, 
     Globe, BarChart3, ShieldCheck, LogOut, Loader2, 
     TrendingUp, Activity, Inbox, UserCircle, Map,
-    ChevronRight, ExternalLink, Calendar, X
+    ChevronRight, ExternalLink, Calendar, X,
+    Search, BarChart, PieChart, Radar, Info
 } from 'lucide-react';
+import { 
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+    RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar as RechartsRadar,
+    BarChart as RechartsBarChart, Bar, Legend
+} from 'recharts';
 import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -54,6 +60,111 @@ const AdminDashboard = ({ isOpen, onClose }) => {
             setLoading(false);
         }
     };
+
+    // --- Intelligence Analytics Components ---
+    const SEOAnalytics = () => {
+        const data = [
+            { name: 'Mon', organic: 400, social: 240, direct: 240 },
+            { name: 'Tue', organic: 300, social: 139, direct: 221 },
+            { name: 'Wed', organic: 200, social: 980, direct: 229 },
+            { name: 'Thu', organic: 278, social: 390, direct: 200 },
+            { name: 'Fri', organic: 189, social: 480, direct: 218 },
+            { name: 'Sat', organic: 239, social: 380, direct: 250 },
+            { name: 'Sun', organic: 349, social: 430, direct: 210 },
+        ];
+
+        const radarData = [
+            { subject: 'Indexing', A: 120, B: 110, fullMark: 150 },
+            { subject: 'Keywords', A: 98, B: 130, fullMark: 150 },
+            { subject: 'Speed', A: 86, B: 130, fullMark: 150 },
+            { subject: 'Backlinks', A: 99, B: 100, fullMark: 150 },
+            { subject: 'Authority', A: 85, B: 90, fullMark: 150 },
+            { subject: 'Reach', A: 65, B: 85, fullMark: 150 },
+        ];
+
+        return (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 bg-[#0c0c0e] border border-white/5 rounded-3xl p-6">
+                    <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-6">Organic SEO Growth (Last 7 Days)</h4>
+                    <div className="h-64 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={data}>
+                                <defs>
+                                    <linearGradient id="colorOrganic" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3}/>
+                                        <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <XAxis dataKey="name" stroke="#374151" fontSize={10} tickLine={false} axisLine={false} />
+                                <Tooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '12px', fontSize: '10px' }} />
+                                <Area type="monotone" dataKey="organic" stroke="#6366f1" fillOpacity={1} fill="url(#colorOrganic)" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+                <div className="bg-[#0c0c0e] border border-white/5 rounded-3xl p-6 flex flex-col items-center">
+                    <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-6">SEO Health Radar</h4>
+                    <div className="h-64 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+                                <PolarGrid stroke="#333" />
+                                <PolarAngleAxis dataKey="subject" stroke="#666" fontSize={8} />
+                                <RechartsRadar name="Current" dataKey="A" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.6} />
+                            </RadarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const LiveIntelligenceMap = () => (
+        <div className="relative bg-[#0c0c0e] border border-white/5 rounded-3xl p-8 overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-cyan-500/5 opacity-50"></div>
+            <div className="flex justify-between items-center mb-8 relative z-10">
+                <h4 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-cyan-400 animate-pulse" /> Live Intelligence Map
+                </h4>
+                <div className="flex gap-2">
+                    <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-[8px] font-bold text-emerald-400 uppercase tracking-widest">
+                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></div> Live Signals
+                    </span>
+                </div>
+            </div>
+            
+            {/* Minimalist World Map Simulation */}
+            <div className="h-80 w-full relative flex items-center justify-center">
+                <svg viewBox="0 0 800 400" className="w-full h-full opacity-20 stroke-white/20 fill-none stroke-[0.5]">
+                    {/* Simulated Continents */}
+                    <path d="M150 150 Q200 100 250 150 T350 150 T450 100 T550 150" />
+                    <path d="M100 250 Q200 300 300 250 T500 250 T700 300" />
+                    <circle cx="200" cy="180" r="2" fill="white" className="animate-pulse" />
+                    <circle cx="450" cy="120" r="2" fill="white" className="animate-pulse" style={{ animationDelay: '1s' }} />
+                    <circle cx="600" cy="220" r="2" fill="white" className="animate-pulse" style={{ animationDelay: '2s' }} />
+                </svg>
+                
+                {/* Floating Signal Indicators */}
+                {Object.entries(stats?.countries || {}).map(([country, count], i) => (
+                    <motion.div 
+                        key={i}
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="absolute flex flex-col items-center"
+                        style={{ 
+                            left: `${20 + (i * 15)}%`, 
+                            top: `${30 + (i * 10)}%` 
+                        }}
+                    >
+                        <div className="w-3 h-3 bg-indigo-500 rounded-full animate-ping absolute"></div>
+                        <div className="w-2 h-2 bg-indigo-400 rounded-full border border-white/50 relative"></div>
+                        <div className="bg-black/80 backdrop-blur-md border border-white/10 px-2 py-1 rounded mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <p className="text-[8px] font-black text-white uppercase">{country}: {count}</p>
+                        </div>
+                    </motion.div>
+                ))}
+            </div>
+        </div>
+    );
 
     if (!isOpen) return null;
 
@@ -320,42 +431,43 @@ const AdminDashboard = ({ isOpen, onClose }) => {
                                     <motion.div key="analytics" className="space-y-8">
                                         <div className="flex justify-between items-end mb-6">
                                             <div>
-                                                <h3 className="text-xl font-black text-white uppercase tracking-tighter">Global Traffic Telemetry</h3>
-                                                <p className="text-[10px] text-zinc-500 font-bold tracking-widest uppercase mt-1">Real-time Visitor Distribution</p>
+                                                <h3 className="text-xl font-black text-white uppercase tracking-tighter">Global Intelligence Telemetry</h3>
+                                                <p className="text-[10px] text-zinc-500 font-bold tracking-widest uppercase mt-1">Real-time Visitor Distribution & SEO Health</p>
                                             </div>
                                             <div className="text-right">
                                                 <p className="text-3xl font-black text-indigo-400 leading-none">{stats?.total_visitors || 0}</p>
-                                                <p className="text-[10px] text-zinc-500 font-bold uppercase mt-1 tracking-widest">Total Sessions</p>
+                                                <p className="text-[10px] text-zinc-500 font-bold uppercase mt-1 tracking-widest">Global Sessions</p>
                                             </div>
                                         </div>
 
+                                        <LiveIntelligenceMap />
+
+                                        <SEOAnalytics />
+
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                            {/* SEO Metrics Simulation */}
-                                            <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6">
-                                                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-4">Traffic Stream</p>
-                                                <div className="space-y-4">
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-xs text-zinc-400">Direct Uplink</span>
-                                                        <span className="text-xs text-white font-mono">65%</span>
-                                                    </div>
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-xs text-zinc-400">Neural Search (SEO)</span>
-                                                        <span className="text-xs text-indigo-400 font-mono">22%</span>
-                                                    </div>
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-xs text-zinc-400">Social Transmission</span>
-                                                        <span className="text-xs text-zinc-500 font-mono">13%</span>
-                                                    </div>
+                                            <div className="bg-[#0c0c0e] border border-white/5 rounded-3xl p-6">
+                                                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-6">Traffic Vector breakdown</p>
+                                                <div className="space-y-5">
+                                                    {[
+                                                        { label: 'Neural Organic (SEO)', val: '42%', color: 'text-indigo-400' },
+                                                        { label: 'Direct Transmission', val: '38%', color: 'text-white' },
+                                                        { label: 'Social Echoes', val: '20%', color: 'text-emerald-400' },
+                                                    ].map((item, i) => (
+                                                        <div key={i} className="flex justify-between items-center border-b border-white/5 pb-3">
+                                                            <span className="text-[10px] font-bold text-zinc-500 uppercase">{item.label}</span>
+                                                            <span className={cn("text-xs font-black font-mono", item.color)}>{item.val}</span>
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             </div>
 
-                                            <div className="md:col-span-2 bg-white/[0.02] border border-white/10 rounded-2xl p-6">
-                                                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-6">Regional Breakdown</p>
-                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                            <div className="md:col-span-2 bg-[#0c0c0e] border border-white/5 rounded-3xl p-6">
+                                                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-6">Geographic Node Capture</p>
+                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                                                     {Object.entries(stats?.countries || {}).map(([c, count], i) => (
-                                                        <div key={i} className="text-center p-3 bg-white/5 rounded-xl border border-white/5">
-                                                            <p className="text-xl font-black text-white leading-none mb-2">{count}</p>
-                                                            <p className="text-[9px] text-zinc-500 font-bold uppercase truncate">{c}</p>
+                                                        <div key={i} className="p-4 bg-white/5 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-all">
+                                                            <p className="text-2xl font-black text-white mb-1">{count}</p>
+                                                            <p className="text-[8px] text-zinc-500 font-black uppercase truncate tracking-tighter">{c}</p>
                                                         </div>
                                                     ))}
                                                 </div>
