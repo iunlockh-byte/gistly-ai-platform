@@ -7,6 +7,7 @@ import urllib3
 import time
 import urllib.parse
 import sqlite3
+import math
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,6 +24,7 @@ import yfinance as yf
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from concurrent.futures import ThreadPoolExecutor
 from lemonsqueezy import LemonSqueezy
 from datetime import datetime
 from typing import List, Any
@@ -96,7 +98,12 @@ app = FastAPI(
 # CORS middleware - Hardened to trusted origins
 allowed_origins = [
     "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
     "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+    "http://127.0.0.1:3000",
     "https://gistly.site",
     "https://www.gistly.site",
     "https://gistly.pages.dev",
@@ -134,10 +141,19 @@ async def nexus_security_shield(request: Request, call_next):
         return await call_next(request)
 
     # If neither, block access
+    print(f"Nexus Shield Denied: Path={request.url.path} Host={request.client.host} ShieldHeader={shield}")
     return JSONResponse(
         status_code=403,
         content={"detail": "Nexus Shield: Forbidden Access. Origin not verified."}
     )
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    duration = time.time() - start_time
+    print(f"REQUEST COMPLETE: {request.method} {request.url.path} STATUS={response.status_code} TIME={duration:.2f}s")
+    return response
 
 
 class AIRequest(BaseModel):
@@ -908,27 +924,27 @@ async def get_news_feed():
             {"url": "https://rss.nytimes.com/services/xml/rss/nyt/World.xml", "name": "NY Times"}
         ]
         
-        all_articles = []
-        
-        # We use a simple loop here, but each parse is reasonably fast.
-        # For true high-perf, we could use httpx + feedparser.parse(content)
-        for src in sources:
+        def fetch_source(src):
             try:
-                feed = feedparser.parse(src["url"])
+                resp = requests.get(src["url"], timeout=5)
+                feed = feedparser.parse(resp.content)
+                items = []
                 for entry in feed.entries[:10]:
-                    all_articles.append({
+                    items.append({
                         "title": entry.title,
                         "link": entry.link,
                         "published": entry.get('published', ''),
                         "source": src["name"]
                     })
-            except Exception as e:
-                print(f"Error fetching from {src['name']}: {e}")
-                continue
-                
-        # Sort by published date if possible, or just shuffle/limit
-        # For now, let's just return a mix
-        return {"articles": all_articles[:30]}
+                return items
+            except Exception:
+                return []
+
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            results = list(executor.map(fetch_source, sources))
+        
+        all_articles = [item for sublist in results for item in sublist]
+        return {"articles": all_articles[:40]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch news stream: {str(e)}")
 
@@ -942,22 +958,27 @@ async def get_sports_news():
             {"url": "https://www.skysports.com/rss/12040", "name": "Sky Sports"}
         ]
         
-        all_articles = []
-        for src in sources:
+        def fetch_source(src):
             try:
-                feed = feedparser.parse(src["url"])
+                resp = requests.get(src["url"], timeout=5)
+                feed = feedparser.parse(resp.content)
+                items = []
                 for entry in feed.entries[:10]:
-                    all_articles.append({
+                    items.append({
                         "title": entry.title,
                         "link": entry.link,
                         "published": entry.get('published', ''),
                         "source": src["name"]
                     })
-            except Exception as e:
-                print(f"Error fetching sports from {src['name']}: {e}")
-                continue
-                
-        return {"articles": all_articles[:30]}
+                return items
+            except Exception:
+                return []
+
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            results = list(executor.map(fetch_source, sources))
+        
+        all_articles = [item for sublist in results for item in sublist]
+        return {"articles": all_articles[:40]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch sports stream: {str(e)}")
 
@@ -1081,14 +1102,14 @@ async def news_summarize(req: AIRequest):
 async def get_trending_markets():
     try:
         # Get live data for top stocks and crypto
-        symbols = ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'GOOGL', 'BTC-USD', 'ETH-USD', 'SOL-USD', 'XRP-USD']
+        symbols = ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'GOOGL', 'BTC-USD', 'ETH-USD', 'SOL-USD', 'XRP-USD', 'GC=F', 'SI=F']
         data = yf.download(symbols, period="2d", group_by='ticker')
         
         market_cards = []
         name_map = {
             'BTC-USD': 'Bitcoin', 'ETH-USD': 'Ethereum', 'SOL-USD': 'Solana', 'XRP-USD': 'Ripple',
             'AAPL': 'Apple', 'MSFT': 'Microsoft', 'NVDA': 'NVIDIA', 'TSLA': 'Tesla',
-            'AMZN': 'Amazon', 'GOOGL': 'Alphabet'
+            'AMZN': 'Amazon', 'GOOGL': 'Alphabet', 'GC=F': 'Gold', 'SI=F': 'Silver'
         }
         
         for sym in symbols:
@@ -1100,6 +1121,9 @@ async def get_trending_markets():
                         prev_close = float(hist['Close'].iloc[-2])
                         change_percent = ((current_close - prev_close) / prev_close) * 100
                         
+                        if math.isnan(current_close) or math.isnan(prev_close) or math.isnan(change_percent):
+                            continue
+
                         market_cards.append({
                             "symbol": sym.replace('-USD', ''),
                             "name": name_map.get(sym, sym),

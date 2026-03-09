@@ -244,6 +244,7 @@ const AdminDashboard = ({ isOpen, onClose }) => {
                                 { id: 'requests', label: 'Neural Requests', icon: MessageSquare },
                                 { id: 'customers', label: 'Users & Contacts', icon: Users },
                                 { id: 'analytics', label: 'Global Traffic', icon: Globe },
+                                { id: 'google_console', label: 'Google Console', icon: BarChart },
                             ].map((item) => (
                                 <button
                                     key={item.id}
@@ -472,6 +473,66 @@ const AdminDashboard = ({ isOpen, onClose }) => {
                                                     ))}
                                                 </div>
                                             </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+
+                                {activeSection === 'google_console' && (
+                                    <motion.div key="google" className="space-y-8">
+                                        <div className="flex justify-between items-center mb-8">
+                                            <div>
+                                                <h3 className="text-xl font-black text-white uppercase tracking-tighter">Google Analytics Command</h3>
+                                                <p className="text-[10px] text-zinc-500 font-bold tracking-widest uppercase mt-1">External Data Integration Core</p>
+                                            </div>
+                                            <a 
+                                                href="https://analytics.google.com/" 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="px-6 py-3 bg-indigo-500 text-white font-black uppercase tracking-widest rounded-xl hover:bg-indigo-400 transition-all flex items-center gap-2 text-[10px]"
+                                            >
+                                                <ExternalLink className="w-4 h-4" /> Open Full Console
+                                            </a>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="bg-[#4285F4]/5 border border-[#4285F4]/20 rounded-3xl p-8 relative overflow-hidden group">
+                                                <div className="absolute -right-4 -top-4 w-24 h-24 bg-[#4285F4]/10 rounded-full blur-2xl group-hover:bg-[#4285F4]/20 transition-all"></div>
+                                                <h4 className="text-lg font-black text-white mb-4">Real-time Acquisition</h4>
+                                                <p className="text-zinc-400 text-sm leading-relaxed mb-6">
+                                                    Track every signal as it hits the Gistly network. Monitor bounce rates, conversion funnels, and demographic flows directly through the Google infrastructure.
+                                                </p>
+                                                <div className="flex items-center gap-4">
+                                                    <div className="px-3 py-1 bg-[#4285F4]/10 rounded border border-[#4285F4]/20 text-[8px] font-black text-[#4285F4] uppercase tracking-widest">
+                                                        Protocol Active
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-[#FBBC05]/5 border border-[#FBBC05]/20 rounded-3xl p-8 relative overflow-hidden group">
+                                                <div className="absolute -right-4 -top-4 w-24 h-24 bg-[#FBBC05]/10 rounded-full blur-2xl group-hover:bg-[#FBBC05]/20 transition-all"></div>
+                                                <h4 className="text-lg font-black text-white mb-4">Indexing & Performance</h4>
+                                                <p className="text-zinc-400 text-sm leading-relaxed mb-6">
+                                                    Ensure Gistly remains at the edge of search engine visibility. Monitor crawler behavior and search console performance metrics.
+                                                </p>
+                                                <div className="flex items-center gap-4">
+                                                    <div className="px-3 py-1 bg-[#FBBC05]/10 rounded border border-[#FBBC05]/20 text-[8px] font-black text-[#FBBC05] uppercase tracking-widest">
+                                                        SEO Optimized
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-white/[0.02] border border-white/10 rounded-3xl p-10 text-center">
+                                            <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
+                                                <BarChart3 className="w-8 h-8 text-indigo-400" />
+                                            </div>
+                                            <h4 className="text-white font-black uppercase tracking-widest mb-2">Advanced Telemetry Linking</h4>
+                                            <p className="text-zinc-500 text-xs max-w-sm mx-auto mb-8">
+                                                To stream live Google Analytics charts directly into this dashboard, you must configure a Google Cloud Service Account and sync the property ID.
+                                            </p>
+                                            <button className="px-8 py-3 border border-white/10 rounded-xl text-[10px] font-bold uppercase tracking-widest text-zinc-400 hover:text-white hover:bg-white/5 transition-all">
+                                                Request Integration Setup
+                                            </button>
                                         </div>
                                     </motion.div>
                                 )}

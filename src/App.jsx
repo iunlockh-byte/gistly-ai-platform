@@ -7,7 +7,8 @@ import {
     FileCheck, FileJson, Share2, Database, LayoutDashboard,
     Sparkles, Zap, ChevronRight, Github, ExternalLink, Menu, X, ArrowLeft, Send, Loader2,
     Lock, Wand2, Calculator, Settings, Globe, Volume2, Copy, Play, Mail, Cpu, Orbit, Fingerprint, Shield, MessageSquare, Maximize2, Move,
-    Mic, MicOff, Bot, Check, CreditCard, Star, History, Save, FilePlus, FolderOpen, Radio, Download
+    Mic, MicOff, Bot, Check, CreditCard, Star, History, Save, FilePlus, FolderOpen, Radio, Download,
+    Cloud, Sun, Droplets, CloudRain, TrendingUp, MapPin, Clock, Calendar
 } from 'lucide-react';
 import axios from 'axios';
 import { clsx } from 'clsx';
@@ -63,8 +64,8 @@ const LANGUAGES = [
 ];
 
 const translations = {
-    en: { toolHub: "Tool Hub", nodeDeployment: "NODE DEPLOYMENT CORE", searchNodes: "Search nodes...", all: "ALL", text: "TEXT", image: "IMAGE", templates: "TEMPLATES", guide: "Guide", pricing: "Pricing", about: "About Us", contact: "Contact", share: "Share", canvasMode: "Canvas Mode", coreOnline: "Core Online", history: "History", news: "News", signIn: "Sign In", tools: "Tools", newCanvas: "New Canvas", saveWorkflow: "Save", architectureName: "Architecture Name...", apiForge: "API Forge", monetize: "Monetize Intelligence", requestFeature: "Request Feature", buildTogether: "Build Together", terms: "Terms", privacy: "Privacy", refund: "Refund", liveNews: "Live News" },
-    si: { toolHub: "මෙවලම් මධ්‍යස්ථානය", nodeDeployment: "පද්ධති ඒකකය", searchNodes: "සොයන්න...", all: "සියල්ල", text: "පෙළ", image: "ඡායාරූප", templates: "ආකෘති", guide: "මඟපෙන්වීම", pricing: "මිල", about: "අප ගැන", contact: "සම්බන්ධ", share: "බෙදාගන්න", canvasMode: "කැන්වස්", coreOnline: "සක්‍රීයයි", history: "ඉතිහාසය", news: "පුවත්", signIn: "ඇතුළු වන්න", tools: "මෙවලම්", newCanvas: "නව", saveWorkflow: "සුරකින්න", architectureName: "නම...", apiForge: "API වෙළඳපොළ", monetize: "අලෙවි කරන්න", requestFeature: "ඉල්ලීම", buildTogether: "එක්ව ගොඩනගමු", terms: "කොන්දේසි", privacy: "පෞද්ගලිකත්වය", refund: "මුදල් ආපසු", liveNews: "සජීවී පුවත්" },
+    en: { toolHub: "Tool Hub", nodeDeployment: "NODE DEPLOYMENT CORE", searchNodes: "Search nodes...", all: "ALL", text: "TEXT", image: "IMAGE", templates: "TEMPLATES", guide: "Guide", pricing: "Pricing", about: "About Us", contact: "Contact", share: "Share", canvasMode: "Canvas Mode", coreOnline: "Core Online", history: "History", news: "News", signIn: "Sign In", tools: "Tools", newCanvas: "New Canvas", saveWorkflow: "Save", architectureName: "Architecture Name...", apiForge: "API Forge", monetize: "Monetize Intelligence", requestFeature: "Request Feature", buildTogether: "Build Together", terms: "Terms", privacy: "Privacy", refund: "Refund", liveNews: "Live News", temporalSync: "Temporal Sync", marketIntelligence: "Market Intelligence", regionalPriority: "Regional Priority", positioning: "Positioning...", synchronizing: "Synchronizing Assets..." },
+    si: { toolHub: "මෙවලම් මධ්‍යස්ථානය", nodeDeployment: "පද්ධති ඒකකය", searchNodes: "සොයන්න...", all: "සියල්ල", text: "පෙළ", image: "ඡායාරූප", templates: "ආකෘති", guide: "මඟපෙන්වීම", pricing: "මිල", about: "අප ගැන", contact: "සම්බන්ධ", share: "බෙදාගන්න", canvasMode: "කැන්වස්", coreOnline: "සක්‍රීයයි", history: "ඉතිහාසය", news: "පුවත්", signIn: "ඇතුළු වන්න", tools: "මෙවලම්", newCanvas: "නව", saveWorkflow: "සුරකින්න", architectureName: "නම...", apiForge: "API වෙළඳපොළ", monetize: "අලෙවි කරන්න", requestFeature: "ඉල්ලීම", buildTogether: "එක්ව ගොඩනගමු", terms: "කොන්දේසි", privacy: "පෞද්ගලිකත්වය", refund: "මුදල් ආපසු", liveNews: "සජීවී පුවත්", temporalSync: "කාලසටහන", marketIntelligence: "වෙළඳපොළ තත්ත්වය", regionalPriority: "ප්‍රාදේශීය පුවත්", positioning: "ස්ථානය සොයමින්...", synchronizing: "දත්ත යාවත්කාලීන කරමින්..." },
     es: { toolHub: "Centro de Herramientas", nodeDeployment: "NÚCLEO DE DESPLIEGUE", searchNodes: "Buscar nodos...", all: "TODO", text: "TEXTO", image: "IMAGEN", templates: "PLANTILLAS", guide: "Guía", pricing: "Precios", about: "Nosotros", contact: "Contacto", share: "Compartir", canvasMode: "Modo Canvas", coreOnline: "Núcleo Online", history: "Historial", news: "Noticias", signIn: "Iniciar Sesión", tools: "Herramientas", newCanvas: "Nuevo", saveWorkflow: "Guardar", architectureName: "Nombre...", apiForge: "API Forge", monetize: "Monetizar", requestFeature: "Solicitar", buildTogether: "Construir Juntos", terms: "Términos", privacy: "Privacidad", refund: "Reembolso", liveNews: "Noticias en Vivo" },
     fr: { toolHub: "Centre d'Outils", nodeDeployment: "CŒUR DE DÉPLOIEMENT", searchNodes: "Rechercher...", all: "TOUT", text: "TEXTE", image: "IMAGE", templates: "MODÈLES", guide: "Guide", pricing: "Tarifs", about: "À Propos", contact: "Contact", share: "Partager", canvasMode: "Mode Canvas", coreOnline: "Noyau En Ligne", history: "Historique", news: "Actualités", signIn: "Connexion", tools: "Outils", newCanvas: "Nouveau", saveWorkflow: "Sauver", architectureName: "Nom...", apiForge: "API Forge", monetize: "Monétiser", requestFeature: "Demander", buildTogether: "Construire Ensemble", terms: "Conditions", privacy: "Confidentialité", refund: "Remboursement", liveNews: "Actualités Live" },
     de: { toolHub: "Werkzeug-Hub", nodeDeployment: "KERN-BEREITSTELLUNG", searchNodes: "Suchen...", all: "ALLE", text: "TEXT", image: "BILD", templates: "VORLAGEN", guide: "Anleitung", pricing: "Preise", about: "Über Uns", contact: "Kontakt", share: "Teilen", canvasMode: "Canvas-Modus", coreOnline: "Kern Online", history: "Verlauf", news: "Nachrichten", signIn: "Anmelden", tools: "Werkzeuge", newCanvas: "Neu", saveWorkflow: "Speichern", architectureName: "Name...", apiForge: "API Forge", monetize: "Monetarisieren", requestFeature: "Anfragen", buildTogether: "Gemeinsam Bauen", terms: "Bedingungen", privacy: "Datenschutz", refund: "Erstattung", liveNews: "Live-Nachrichten" },
@@ -303,7 +304,7 @@ const tools = [
     }
 ];
 
-const categories = ['All', 'Content', 'Development', 'Creative', 'Data', 'Business'];
+const categories = ['All', 'Content', 'Development', 'Creative', 'Data', 'Business', 'Career'];
 
 // Galaxy / Starfield effect moving towards camera
 const MovingStars = () => {
@@ -1157,6 +1158,216 @@ const DraggableNode = ({ data, removeNode, updateNodePosition, exportNodeData })
     );
 };
 
+// Smart Info Widget Component
+const SmartInfoWidget = ({ t }) => {
+    const [time, setTime] = useState(new Date());
+    const [weather, setWeather] = useState(null);
+    const [location, setLocation] = useState(null);
+    const [markets, setMarkets] = useState([]);
+    const [localNews, setLocalNews] = useState(null);
+
+    useEffect(() => {
+        const timer = setInterval(() => setTime(new Date()), 1000);
+        
+        const fetchSmartData = async () => {
+            try {
+                // Fetch Geo & Weather
+                const geoResp = await axios.get('https://ipapi.co/json/').catch(() => ({ data: {} }));
+                const geo = geoResp.data;
+                setLocation(geo);
+
+                if (geo.city) {
+                    // Using wttr.in for weather
+                    const weatherResp = await axios.get(`https://wttr.in/${geo.city}?format=j1`).catch(() => null);
+                    if (weatherResp && weatherResp.data && weatherResp.data.current_condition) {
+                        setWeather(weatherResp.data.current_condition[0]);
+                    }
+                }
+
+                // Fetch Markets (Bitcoin, Gold, Silver from our API)
+                const marketResp = await nexusAxios.get('/api/markets/trending').catch(() => ({ data: { markets: [] } }));
+                const allMarkets = marketResp.data.markets || [];
+                // Filter for requested ones: BTC, Gold, SI (Silver symbol from backend)
+                const filtered = allMarkets.filter(m => 
+                    ['BTC', 'Gold', 'Silver', 'SI', 'GC'].includes(m.symbol) || 
+                    ['Gold', 'Silver', 'Bitcoin'].includes(m.name)
+                );
+                // Limit to 3 for compact view
+                setMarkets(filtered.slice(0, 3));
+
+                // Fetch Local News Snippet
+                const newsResp = await nexusAxios.get('/api/news').catch(() => ({ data: { articles: [] } }));
+                const articles = newsResp.data.articles || [];
+                const query = (geo.country_name || geo.city || '').toLowerCase();
+                const local = articles.find(a => 
+                    (a.title + a.description).toLowerCase().includes(query)
+                );
+                if (local) setLocalNews(local);
+            } catch (err) {
+                console.warn("Smart Widget fetch failed", err);
+            }
+        };
+
+        fetchSmartData();
+        const dataInterval = setInterval(fetchSmartData, 300000); // 5 min sync
+
+        return () => {
+            clearInterval(timer);
+            clearInterval(dataInterval);
+        };
+    }, []);
+
+    return (
+        <motion.div
+            initial={{ x: 300, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ type: 'spring', damping: 20 }}
+            className="fixed right-6 top-24 z-40 hidden xl:flex flex-col gap-4 w-72"
+        >
+            {/* Clock & Regional Identity */}
+            <div className="bg-[#111113]/40 backdrop-blur-3xl border border-white/10 rounded-3xl p-5 shadow-2xl overflow-hidden relative group hover:border-indigo-500/30 transition-all duration-500">
+                <div className="absolute -right-4 -top-4 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl group-hover:bg-indigo-500/20 transition-all duration-700"></div>
+                
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2.5 bg-indigo-500/10 rounded-2xl border border-indigo-500/20 group-hover:scale-110 transition-transform">
+                        <Clock className="w-5 h-5 text-indigo-400 animate-pulse" />
+                    </div>
+                    <div>
+                        <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] mb-0.5">{t.temporalSync || 'Temporal Sync'}</h4>
+                        <div className="text-2xl font-bold text-white tracking-tighter tabular-nums drop-shadow-sm">
+                            {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex flex-col gap-1.5 border-t border-white/5 pt-4">
+                    <div className="flex items-center gap-2 text-zinc-400">
+                        <Calendar className="w-3.5 h-3.5 text-zinc-600" />
+                        <span className="text-[11px] font-medium tracking-wide">{time.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-zinc-500">
+                        <MapPin className="w-3.5 h-3.5 text-zinc-700" />
+                        <span className="text-[10px] font-mono tracking-tighter uppercase">{location?.city || 'Detecting...'}, {location?.country_code || 'Global'}</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Atmosphere Intelligence */}
+            <div className="bg-[#111113]/40 backdrop-blur-3xl border border-white/10 rounded-3xl p-5 shadow-2xl relative group overflow-hidden hover:border-emerald-500/30 transition-all duration-500">
+                <div className="absolute -left-6 -bottom-6 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl group-hover:bg-emerald-500/10 transition-all duration-700"></div>
+                
+                <div className="flex items-center gap-4 mb-4">
+                    <div className="p-3 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 group-hover:rotate-12 transition-all">
+                        {weather?.weatherDesc[0].value.toLowerCase().includes('sun') || weather?.weatherDesc[0].value.toLowerCase().includes('clear') 
+                            ? <Sun className="w-6 h-6 text-yellow-400 group-hover:animate-spin-slow" /> 
+                            : <CloudRain className="w-6 h-6 text-cyan-400" />}
+                    </div>
+                    <div className="flex-1">
+                        <div className="flex items-baseline gap-1">
+                            <span className="text-3xl font-black text-white">{weather ? weather.temp_C : '--'}</span>
+                            <span className="text-emerald-400 font-bold text-lg">°C</span>
+                        </div>
+                        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">{weather?.weatherDesc[0].value || t.positioning}</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-4">
+                    <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></div>
+                        <div className="flex flex-col">
+                            <span className="text-[8px] text-zinc-600 font-black uppercase">Humidity</span>
+                            <span className="text-[11px] text-zinc-300 font-bold">{weather?.humidity || '0'}%</span>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
+                        <div className="flex flex-col">
+                            <span className="text-[8px] text-zinc-600 font-black uppercase">Wind Speed</span>
+                            <span className="text-[11px] text-zinc-300 font-bold">{weather?.windspeedKmph || '0'} <span className="text-[8px] text-zinc-500">Km/h</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Asset Intelligence */}
+            <div className="bg-[#111113]/40 backdrop-blur-3xl border border-white/10 rounded-3xl p-5 shadow-2xl relative overflow-hidden group hover:border-white/20 transition-all duration-500">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4 text-emerald-400" />
+                        <span className="text-[10px] font-black text-white uppercase tracking-[0.2em]">{t.marketIntelligence || 'Markets'}</span>
+                    </div>
+                    <div className="px-2 py-0.5 bg-emerald-500/10 rounded-md border border-emerald-500/20">
+                        <span className="text-[8px] font-black text-emerald-400">LIVE</span>
+                    </div>
+                </div>
+                
+                <div className="space-y-2.5">
+                    {markets.length > 0 ? markets.map(m => (
+                        <div key={m.symbol} className="flex items-center justify-between bg-white/[0.02] border border-white/[0.02] hover:border-white/10 hover:bg-white/[0.05] rounded-2xl px-4 py-3 group/item transition-all cursor-crosshair">
+                            <div className="flex items-center gap-3">
+                                <div className={cn(
+                                    "p-1.5 rounded-lg flex items-center justify-center border",
+                                    m.change >= 0 ? "bg-emerald-500/10 border-emerald-500/20" : "bg-red-500/10 border-red-500/20"
+                                )}>
+                                    <span className={cn(
+                                        "text-[10px] font-black",
+                                        m.change >= 0 ? "text-emerald-400" : "text-red-400"
+                                    )}>{m.symbol.slice(0, 3)}</span>
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-[11px] font-bold text-white group-hover/item:text-indigo-300 transition-colors">{m.name}</span>
+                                    <span className="text-[8px] text-zinc-600 font-mono tracking-tighter uppercase">{m.symbol} Node</span>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-xs font-black text-white tracking-tight">${m.price.toLocaleString()}</div>
+                                <div className={cn(
+                                    "text-[9px] font-bold flex items-center justify-end gap-1",
+                                    m.change >= 0 ? "text-emerald-400" : "text-red-400"
+                                )}>
+                                    {m.change >= 0 ? '▲' : '▼'} {Math.abs(m.change)}%
+                                </div>
+                            </div>
+                        </div>
+                    )) : (
+                        <div className="flex flex-col items-center justify-center py-6 gap-3">
+                            <Loader2 className="w-5 h-5 animate-spin text-zinc-700" />
+                            <span className="text-[10px] text-zinc-700 font-mono uppercase tracking-widest">{t.synchronizing || 'Syncing...'}</span>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Regional News Alert */}
+            {localNews && (
+                <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    className="bg-indigo-500/5 hover:bg-indigo-500/10 backdrop-blur-3xl border border-indigo-500/20 rounded-3xl p-5 shadow-2xl relative group cursor-pointer overflow-hidden transition-all duration-300"
+                    onClick={() => window.open(localNews.link, '_blank')}
+                >
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-30 transition-opacity">
+                        <Radio className="w-12 h-12 text-indigo-400 animate-pulse" />
+                    </div>
+                    <div className="flex items-center gap-2 mb-3">
+                        <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                        <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{t.regionalPriority || 'Priority Alert'}</span>
+                    </div>
+                    <p className="text-xs text-zinc-200 font-semibold leading-relaxed line-clamp-2 group-hover:text-white transition-colors">
+                        {localNews.title}
+                    </p>
+                    <div className="mt-4 flex items-center justify-between border-t border-white/5 pt-3">
+                        <span className="text-[9px] font-black text-zinc-500 uppercase tracking-tighter">{localNews.source}</span>
+                        <div className="flex items-center gap-1.5 text-indigo-400">
+                            <span className="text-[9px] font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Read more</span>
+                            <ExternalLink className="w-3 h-3" />
+                        </div>
+                    </div>
+                </motion.div>
+            )}
+        </motion.div>
+    );
+};
+
 export default function App() {
     const { user, isSignedIn } = useUser();
     const [searchTerm, setSearchTerm] = useState('');
@@ -1660,31 +1871,34 @@ export default function App() {
 
                     {/* Filters */}
                     <div className="flex flex-wrap gap-2 mb-6 border-b border-white/5 pb-4">
-                        {[
-                            { id: 'ALL', label: t.all },
-                            { id: 'TEXT', label: t.text },
-                            { id: 'IMAGE', label: t.image },
-                            { id: 'TEMPLATES', label: t.templates }
-                        ].map((cat) => (
+                        {categories.map((cat) => (
                             <button
-                                key={cat.id}
+                                key={cat}
                                 onClick={() => {
-                                    if (cat.id === 'TEMPLATES') setIsTemplatesOpen(true);
-                                    else {
-                                        setSelectedCategory(cat.id);
-                                        setIsTemplatesOpen(false);
-                                    }
+                                    setSelectedCategory(cat);
+                                    setIsTemplatesOpen(false);
                                 }}
                                 className={cn(
                                     "px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all",
-                                    (selectedCategory === cat.id && !isTemplatesOpen) || (cat.id === 'TEMPLATES' && isTemplatesOpen)
+                                    selectedCategory === cat && !isTemplatesOpen
                                         ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
                                         : "bg-white/5 text-zinc-500 hover:bg-white/10 hover:text-white border border-transparent"
                                 )}
                             >
-                                {cat.label}
+                                {cat === 'All' ? t.all : cat}
                             </button>
                         ))}
+                        <button
+                            onClick={() => setIsTemplatesOpen(true)}
+                            className={cn(
+                                "px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all",
+                                isTemplatesOpen
+                                    ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
+                                    : "bg-white/5 text-zinc-500 hover:bg-white/10 hover:text-white border border-transparent"
+                            )}
+                        >
+                            {t.templates}
+                        </button>
                     </div>
 
                     {/* Tool/Template List */}
@@ -2221,6 +2435,7 @@ export default function App() {
                     </div>
                 </div>
 
+                <SmartInfoWidget t={t} />
             </div>
 
             <NewsPanel isOpen={isNewsOpen} onClose={() => setIsNewsOpen(false)} />
