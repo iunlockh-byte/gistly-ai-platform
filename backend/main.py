@@ -901,42 +901,63 @@ async def analyze_image(req: AIRequest):
 @app.get("/api/news")
 async def get_news_feed():
     try:
-        # Using Google News RSS for Top Stories globally or technology.
-        # We can mix general news or tech. Let's use general world news for now.
-        url = "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en"
-        feed = feedparser.parse(url)
+        sources = [
+            {"url": "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en", "name": "Google News"},
+            {"url": "https://feeds.bbci.co.uk/news/rss.xml", "name": "BBC World"},
+            {"url": "https://www.aljazeera.com/xml/rss/all.xml", "name": "Al Jazeera"},
+            {"url": "https://rss.nytimes.com/services/xml/rss/nyt/World.xml", "name": "NY Times"}
+        ]
         
-        articles = []
-        for entry in feed.entries[:20]: # Get top 20 news
-            # Some feeds put image in media_content, but google news doesn't usually.
-            # We will just pass title, link, published.
-            articles.append({
-                "title": entry.title,
-                "link": entry.link,
-                "published": entry.get('published', ''),
-                "source": entry.get('source', {}).get('title', 'News Source')
-            })
-            
-        return {"articles": articles}
+        all_articles = []
+        
+        # We use a simple loop here, but each parse is reasonably fast.
+        # For true high-perf, we could use httpx + feedparser.parse(content)
+        for src in sources:
+            try:
+                feed = feedparser.parse(src["url"])
+                for entry in feed.entries[:10]:
+                    all_articles.append({
+                        "title": entry.title,
+                        "link": entry.link,
+                        "published": entry.get('published', ''),
+                        "source": src["name"]
+                    })
+            except Exception as e:
+                print(f"Error fetching from {src['name']}: {e}")
+                continue
+                
+        # Sort by published date if possible, or just shuffle/limit
+        # For now, let's just return a mix
+        return {"articles": all_articles[:30]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch news stream: {str(e)}")
 
 @app.get("/api/news/sports")
 async def get_sports_news():
     try:
-        url = "https://news.google.com/news/rss/headlines/section/topic/SPORTS?hl=en-US&gl=US&ceid=US:en"
-        feed = feedparser.parse(url)
+        sources = [
+            {"url": "https://news.google.com/news/rss/headlines/section/topic/SPORTS?hl=en-US&gl=US&ceid=US:en", "name": "Google Sports"},
+            {"url": "https://feeds.bbci.co.uk/sport/rss.xml", "name": "BBC Sport"},
+            {"url": "https://www.espn.com/espn/rss/news", "name": "ESPN"},
+            {"url": "https://www.skysports.com/rss/12040", "name": "Sky Sports"}
+        ]
         
-        articles = []
-        for entry in feed.entries[:20]:
-            articles.append({
-                "title": entry.title,
-                "link": entry.link,
-                "published": entry.get('published', ''),
-                "source": entry.get('source', {}).get('title', 'Sports News')
-            })
-            
-        return {"articles": articles}
+        all_articles = []
+        for src in sources:
+            try:
+                feed = feedparser.parse(src["url"])
+                for entry in feed.entries[:10]:
+                    all_articles.append({
+                        "title": entry.title,
+                        "link": entry.link,
+                        "published": entry.get('published', ''),
+                        "source": src["name"]
+                    })
+            except Exception as e:
+                print(f"Error fetching sports from {src['name']}: {e}")
+                continue
+                
+        return {"articles": all_articles[:30]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch sports stream: {str(e)}")
 
@@ -948,38 +969,62 @@ async def get_live_scores():
         {
             "id": "match_001",
             "sport": "Cricket",
-            "tournament": "T20 World Cup",
+            "tournament": "Champions Trophy",
             "team1": "Sri Lanka",
             "team2": "India",
-            "score1": "175/6 (20.0)",
-            "score2": "142/4 (16.2)",
-            "status": "India need 34 runs in 22 balls",
-            "context": "Sri Lanka batted first and scored 175. India is currently at 142 for 4 in 16.2 overs. Virat Kohli is at the crease.",
-            "live": True
+            "score1": "285/7 (50.0)",
+            "score2": "286/4 (48.2)",
+            "status": "India won by 6 wickets",
+            "context": "India chased down 285 comfortably. KL Rahul scored a century.",
+            "live": False
         },
         {
             "id": "match_002",
             "sport": "Football",
-            "tournament": "Premier League",
-            "team1": "Arsenal",
-            "team2": "Manchester City",
-            "score1": "2",
-            "score2": "1",
-            "status": "78' - 2nd Half",
-            "context": "Arsenal is leading 2-1 against Manchester City. City is pressing hard with 65% possession in the last 10 mins.",
+            "tournament": "Champions League",
+            "team1": "Real Madrid",
+            "team2": "Liverpool",
+            "score1": "3",
+            "score2": "2",
+            "status": "82' - Goal! Salah scores.",
+            "context": "Real Madrid leading 3-2. Liverpool mounting massive pressure in the final minutes.",
             "live": True
         },
         {
             "id": "match_003",
+            "sport": "Tennis",
+            "tournament": "Wimbledon",
+            "team1": "Alcaraz",
+            "team2": "Djokovic",
+            "score1": "6, 4, 3",
+            "score2": "4, 6, 2",
+            "status": "Set 3 - Game 6",
+            "context": "Intense baseline rallies. Alcaraz leads by a break in the third set.",
+            "live": True
+        },
+        {
+            "id": "match_004",
+            "sport": "Basketball",
+            "tournament": "NBA",
+            "team1": "Lakers",
+            "team2": "Warriors",
+            "score1": "112",
+            "score2": "108",
+            "status": "Q4 - 2:45 left",
+            "context": "LeBron James has 35 points. Warriors rallying with 3-pointers.",
+            "live": True
+        },
+        {
+            "id": "match_005",
             "sport": "Cricket",
-            "tournament": "Ashes Test Series",
-            "team1": "Australia",
-            "team2": "England",
-            "score1": "350 & 50/1",
-            "score2": "280",
-            "status": "Day 3 - Stumps. AUS lead by 120 runs.",
-            "context": "Australia scored 350 in first innings, England replied with 280. Australia is currently 50/1 in their second innings at Stumps on Day 3.",
-            "live": False
+            "tournament": "IPL 2026",
+            "team1": "RCB",
+            "team2": "CSK",
+            "score1": "210/4 (20.0)",
+            "score2": "45/1 (4.0)",
+            "status": "CSK need 166 runs in 16 overs",
+            "context": "RCB posted a massive total. Ruturaj Gaikwad leading the chase for CSK.",
+            "live": True
         }
     ]
     return {"matches": matches}
@@ -1036,22 +1081,25 @@ async def news_summarize(req: AIRequest):
 async def get_trending_markets():
     try:
         # Get live data for top stocks and crypto
-        symbols = ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'BTC-USD', 'ETH-USD']
+        symbols = ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'GOOGL', 'BTC-USD', 'ETH-USD', 'SOL-USD', 'XRP-USD']
         data = yf.download(symbols, period="2d", group_by='ticker')
         
         market_cards = []
+        name_map = {
+            'BTC-USD': 'Bitcoin', 'ETH-USD': 'Ethereum', 'SOL-USD': 'Solana', 'XRP-USD': 'Ripple',
+            'AAPL': 'Apple', 'MSFT': 'Microsoft', 'NVDA': 'NVIDIA', 'TSLA': 'Tesla',
+            'AMZN': 'Amazon', 'GOOGL': 'Alphabet'
+        }
+        
         for sym in symbols:
             try:
                 if sym in data:
                     hist = data[sym]
                     if not hist.empty and len(hist) >= 2:
-                        # Sometimes yf.download returns multi-index columns nicely, other times flat depending on how many tickers
-                        # Let's handle it safely.
                         current_close = float(hist['Close'].iloc[-1])
                         prev_close = float(hist['Close'].iloc[-2])
                         change_percent = ((current_close - prev_close) / prev_close) * 100
                         
-                        name_map = {'BTC-USD': 'Bitcoin', 'ETH-USD': 'Ethereum', 'AAPL': 'Apple', 'MSFT': 'Microsoft', 'NVDA': 'NVIDIA', 'TSLA': 'Tesla'}
                         market_cards.append({
                             "symbol": sym.replace('-USD', ''),
                             "name": name_map.get(sym, sym),
@@ -1063,12 +1111,12 @@ async def get_trending_markets():
                 print(f"Error parsing market data for {sym}: {inner_e}")
                 continue
                 
-        # If the live API acts up or rate limits, fallback to some realistic simulated data just so UI doesn't break
-        if not market_cards:
+        # Fallback if too few cards
+        if len(market_cards) < 4:
             market_cards = [
                 {"symbol": "BTC", "name": "Bitcoin", "price": 64320.50, "change": 2.4, "isCrypto": True},
-                {"symbol": "ETH", "name": "Ethereum", "price": 3450.20, "change": -1.2, "isCrypto": True},
                 {"symbol": "NVDA", "name": "NVIDIA", "price": 890.15, "change": 5.6, "isCrypto": False},
+                {"symbol": "SOL", "name": "Solana", "price": 145.20, "change": 3.8, "isCrypto": True},
                 {"symbol": "AAPL", "name": "Apple", "price": 172.50, "change": 0.5, "isCrypto": False},
             ]
             

@@ -11,6 +11,13 @@ function cn(...inputs) {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+const nexusAxios = axios.create({
+    baseURL: API_BASE_URL,
+    headers: {
+        'X-Nexus-Shield': 'G7-NX-SECURITY-V1-ALPHA'
+    }
+});
+
 export default function NewsPanel({ isOpen, onClose }) {
     const [activeTab, setActiveTab] = useState('global'); // 'global', 'sports', 'scores', 'markets'
     const [news, setNews] = useState([]);
@@ -34,16 +41,16 @@ export default function NewsPanel({ isOpen, onClose }) {
         setError('');
         try {
             if (activeTab === 'global' && (news.length === 0 || force)) {
-                const resp = await axios.get(`${API_BASE_URL}/api/news`);
+                const resp = await nexusAxios.get(`/api/news`);
                 setNews(resp.data.articles || []);
             } else if (activeTab === 'sports' && (sportsNews.length === 0 || force)) {
-                const resp = await axios.get(`${API_BASE_URL}/api/news/sports`);
+                const resp = await nexusAxios.get(`/api/news/sports`);
                 setSportsNews(resp.data.articles || []);
             } else if (activeTab === 'scores' && (scores.length === 0 || force)) {
-                const resp = await axios.get(`${API_BASE_URL}/api/scores/live`);
+                const resp = await nexusAxios.get(`/api/scores/live`);
                 setScores(resp.data.matches || []);
             } else if (activeTab === 'markets' && (markets.length === 0 || force)) {
-                const resp = await axios.get(`${API_BASE_URL}/api/markets/trending`);
+                const resp = await nexusAxios.get(`/api/markets/trending`);
                 setMarkets(resp.data.markets || []);
             }
         } catch (err) {
@@ -65,7 +72,7 @@ export default function NewsPanel({ isOpen, onClose }) {
         setSummaryLoading(true);
         setSummaryResult('');
         try {
-            const resp = await axios.post(`${API_BASE_URL}/api/news/summarize`, {
+            const resp = await nexusAxios.post(`/api/news/summarize`, {
                 content: article.link,
                 context: article.title
             });
@@ -82,7 +89,7 @@ export default function NewsPanel({ isOpen, onClose }) {
         setPredictionLoading(true);
         setPredictionResult('');
         try {
-            const resp = await axios.post(`${API_BASE_URL}/api/scores/predict`, {
+            const resp = await nexusAxios.post(`/api/scores/predict`, {
                 content: `Match: ${match.team1} vs ${match.team2}. Tournament: ${match.tournament}. Score: ${match.team1} (${match.score1}) - ${match.team2} (${match.score2}). Live Context: ${match.context}. Target Status: ${match.status}.`
             });
             setPredictionResult(resp.data.result);
@@ -98,7 +105,7 @@ export default function NewsPanel({ isOpen, onClose }) {
         setPredictionLoading(true);
         setPredictionResult('');
         try {
-            const resp = await axios.post(`${API_BASE_URL}/api/markets/analyze`, {
+            const resp = await nexusAxios.post(`/api/markets/analyze`, {
                 content: market.symbol
             });
             setPredictionResult(resp.data.result);
